@@ -1,5 +1,6 @@
 import torch 
 import torch.nn as nn 
+import torch.nn.init as init
 import torch.optim as optim
 import numpy as np
 import time
@@ -24,6 +25,13 @@ class dnn(nn.Module):
             if i < len(layers)-1:
                 self.layers.append(nn.Linear(layers[i], layers[i+1]))
         self.layers.append(nn.Linear(layers[-1], n_outputs))
+
+        # Initialize weights and biases
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                init.kaiming_normal_(layer.weight, nonlinearity='relu')
+                if layer.bias is not None:
+                    init.zeros_(layer.bias)
 
     def forward(self, x):
         for layer in self.layers:
@@ -121,7 +129,7 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
         tEp = tEnd_ep - tStartEp
 
         # update epoch training loss
-        training_loss[ep] = epoch_trainLoss1 #/n_batches
+        training_loss[ep] = epoch_trainLoss1/n_batches
 
         # Update learning rate every epoch
         current_lr = optimizer.param_groups[0]['lr']
@@ -134,12 +142,12 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
             # l1Loss0 = training_loss[ep,3]
             if allowPrint == True:
                 print('\n---------------------------------')
-                print(f'epoch: {ep}/{epochs}, \t loss: {loss0:.3f} \t rel:{1000:.1f}, \t time: {tEp:.2f}')
+                print(f'epoch: {ep}/{epochs}, \t loss: {loss0:.3f} \t rel:{1000:.3e}, \t time: {tEp:.2f}')
         if (ep+10)%1 == 0:
             loss = training_loss[ep]
             relLoss = loss/loss0*1000
             if allowPrint == True:
-                print(f'epoch: {ep+1}/{epochs}, \t loss: {loss:.3f} \t rel:{relLoss:.1f}, \t time: {tEp:.2f}')
+                print(f'epoch: {ep+1}/{epochs}, \t loss: {loss:.3f} \t rel:{relLoss:.3e}, \t time: {tEp:.2f}')
             if ep<epochs-1 and relLoss <= 1e-12:
                 if allowPrint==True:
                     print(f'---------------------------------')
