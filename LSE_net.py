@@ -94,19 +94,20 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
 
             # loss computations
             loss = loss_fn(y_pred, y_target)
-            accuracy = torch.abs((y_pred.detach()-y_target))/torch.abs(y_target)
+            # term_loss = (y_target[-1] - y_pred[-1])**2
+            # accuracy = torch.abs((y_pred.detach()-y_target))/torch.abs(y_target)
             # l1_reg = torch.tensor(0.)
             # for param in agent_nn.parameters():
             #     l1_reg += torch.sum(torch.abs(param))
             # l1_loss = l1_lambda*l1_reg
             # final loss
-            loss = coeff[0]*loss
+            total_loss = coeff[0]*loss #+ coeff[1]*term_loss
             # backpropagation and optimization step
             optimizer.zero_grad()
-            loss.backward()
+            total_loss.backward()
             optimizer.step()
             # update loss and indices
-            epoch_trainLoss1 += loss.detach().item()
+            epoch_trainLoss1 += total_loss.detach().item()
 
             if ep == 0 and allowPrint==True:
                 if i == 0:
