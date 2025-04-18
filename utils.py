@@ -76,6 +76,22 @@ def route_cost(cities, routes):
     total_distances = distances.sum(dim=1)  # Sum distances for each batch
     return total_distances
 
+def num_flpo_routes(n_facilities, n_drones):
+    n_int_stages = n_facilities + 1
+    n_routes_flip = [[]]*n_int_stages
+
+    for i in range(n_int_stages):
+        if i == 0:
+            n_routes_flip[i] = [1]*(n_facilities+1)
+        elif i > 0 and i < n_int_stages-1:
+            n_routes_flip[i] = [sum(n_routes_flip[i-1])] * n_facilities
+            n_routes_flip[i].append(1) # only one path from stopping state
+        elif i == n_int_stages - 1:
+            n_routes_flip[i] = [sum(n_routes_flip[i-1])] * n_drones
+
+    return n_routes_flip[::-1]
+
+
 def generate_unit_circle_cities(B, N, d):
     """
     Generates a PyTorch tensor of size (B, N, d), representing B batches
@@ -128,6 +144,16 @@ def check_gradients(model, large_grad_threshold=1e6):
             # Check for large gradient values
             if torch.any(torch.abs(param.grad) > large_grad_threshold):
                 print(f"Large gradient detected in parameter: {name}, max gradient: {param.grad.abs().max().item()}")
+
+
+def createBetaArray(min, max, grow):
+    beta = min
+    beta_array = [beta]
+    while beta <= max:
+        beta = beta*grow
+        beta_array.append(beta)
+    beta_array = torch.tensor(beta_array, dtype=torch.float32)
+    return beta_array
 
 
 coordinates = [

@@ -83,6 +83,11 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
     for ep in range(epochs):
         j = 0
         epoch_trainLoss1 = 0
+        if shuffledata:
+            # shuffle training data
+            indices = torch.randperm(X.size(0))
+            X_shuffled = X[indices]
+            Y_shuffled = Y[indices]
 
         tStartEp = time.time()
         # update neural net parameters by batchwise training per epoch
@@ -90,26 +95,20 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
             # set training mode
             dnn.train(True) #(optional)
             # compute necessary data
-            if j+batch_size >= len(X):
-                j_batch_end = len(X)
+            if j+batch_size >= len(X_shuffled):
+                j_batch_end = len(X_shuffled)
             else:
                 j_batch_end = j+batch_size
 
             # predictions and targets
-            x_train = X[j:j+j_batch_end,:]
-            y_target = Y[j:j+j_batch_end,:]
+            x_train = X_shuffled[j:j+j_batch_end,:]
+            y_target = Y_shuffled[j:j+j_batch_end,:]
             y_pred = dnn(x_train)
 
             # loss computations
             loss = loss_fn(y_pred, y_target)
-            # term_loss = (y_target[-1] - y_pred[-1])**2
-            # accuracy = torch.abs((y_pred.detach()-y_target))/torch.abs(y_target)
-            # l1_reg = torch.tensor(0.)
-            # for param in agent_nn.parameters():
-            #     l1_reg += torch.sum(torch.abs(param))
-            # l1_loss = l1_lambda*l1_reg
-            # final loss
             total_loss = coeff[0]*loss #+ coeff[1]*term_loss
+
             # backpropagation and optimization step
             optimizer.zero_grad()
             total_loss.backward()
