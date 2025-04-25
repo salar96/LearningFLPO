@@ -34,6 +34,12 @@ class dnn(nn.Module):
                     init.zeros_(layer.bias)
 
     def forward(self, x):
+        # print(x)
+        # print(x[:,:2])
+        # print(10**x[:,2].view(-1,1))
+        x = torch.cat((x[:,:2], 10**x[:,2].view(-1,1)), axis=1)
+        # x = x.clone()
+        # x = 10**x[2]
         for layer in self.layers:
             x = layer(x)
         return x
