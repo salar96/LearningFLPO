@@ -20,23 +20,27 @@ class dnn(nn.Module):
         # create input, hidden and output layers with ReLU activation
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(n_inputs, layers[0]))
+        # nn.Dropout(p=0.1)
         for i, l in enumerate(layers):
             self.layers.append(nn.ReLU())
             if i < len(layers)-1:
                 self.layers.append(nn.Linear(layers[i], layers[i+1]))
+                nn.Dropout(p=0.1)
         self.layers.append(nn.Linear(layers[-1], n_outputs))
+        # nn.Dropout(p=0.1)
+        # self.layers.append(nn.ReLU())
 
         # Initialize weights and biases
         for layer in self.layers:
             if isinstance(layer, nn.Linear):
                 init.kaiming_normal_(layer.weight, nonlinearity='relu')
+                # init.zeros_(layer.weight)
                 if layer.bias is not None:
                     init.zeros_(layer.bias)
 
     def forward(self, x):
-        # print(x)
-        x = torch.cat((x[:,:2], 10**x[:,2].view(-1,1)), axis=1)
-        # print(x)
+        # x = torch.cat((x[:,:2], 10**x[:,2].view(-1,1)), axis=1)
+        # y = x
         for layer in self.layers:
             x = layer(x)
         return x
@@ -91,6 +95,9 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
             indices = torch.randperm(X.size(0))
             X_shuffled = X[indices]
             Y_shuffled = Y[indices]
+        else:
+            X_shuffled = X
+            Y_shuffled = Y    
 
         tStartEp = time.time()
         # update neural net parameters by batchwise training per epoch
@@ -131,7 +138,7 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
         tEp = tEnd_ep - tStartEp
 
         # update epoch training loss
-        training_loss[ep] = epoch_trainLoss1/n_batches
+        training_loss[ep] = epoch_trainLoss1#/n_batches
 
         # Update learning rate every epoch
         current_lr = optimizer.param_groups[0]['lr']

@@ -146,10 +146,10 @@ def check_gradients(model, large_grad_threshold=1e6):
                 print(f"Large gradient detected in parameter: {name}, max gradient: {param.grad.abs().max().item()}")
 
 
-def createBetaArray(min, max, grow):
-    beta = min
+def createBetaArray(b_min, b_max, grow):
+    beta = b_min
     beta_array = [beta]
-    while beta <= max:
+    while beta < b_max:
         beta = beta*grow
         beta_array.append(beta)
     beta_array = torch.tensor(beta_array, dtype=torch.float32)
