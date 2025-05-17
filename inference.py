@@ -15,7 +15,7 @@ def inference(data , model, method = 'BeamSearch'):
             actions[:, t, 0] = torch.argmax(outs, dim=-1)
             
     elif method == 'BeamSearch':
-        seq, scores = beam_search(model,data,beam_width=min(num_cities,5))
+        seq, scores = beam_search(model,data,beam_width=min(num_cities,3))
         actions = seq[:,0,:]
     else:
         raise "Wrong Method!"
