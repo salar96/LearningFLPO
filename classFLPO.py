@@ -26,7 +26,7 @@ class FLPO():
         self.selfHop = selfHop
         self.stageHorizon = self.f+1
         self.bounds = [(0,self.scale)]*self.f*2
-        self.MY_INF = 10*self.scale
+        self.MY_INF = 1e8*self.scale
         self.nPaths = self.return_n_paths()
 
         if plotFLPO == True:
