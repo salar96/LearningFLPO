@@ -2,6 +2,8 @@ import math
 import torch
 from scipy.stats import ttest_rel
 import subprocess
+import numpy as np
+from scipy.spatial.distance import cdist
 
 def is_paired_ttest_significant(tensor1, tensor2, alpha=0.05):
     """
