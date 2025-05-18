@@ -140,8 +140,11 @@ def generate_unit_circle_cities(B, N, d):
     # Combine x, y, and higher dimensions
     unit_circle_coords = torch.stack((x_coords, y_coords), dim=-1)
     result = torch.cat((unit_circle_coords, higher_dims), dim=-1)
-    result[:,0,:] = result[:,-1,:]
-    return result
+    shuffled_indices = torch.stack([torch.randperm(N) for _ in range(B)])
+    shuffled_indices = shuffled_indices.unsqueeze(-1).expand(-1, -1, d)
+    shuffled_x = torch.gather(result, dim=1, index=shuffled_indices)
+    # result[:,0,:] = result[:,-1,:]
+    return shuffled_x
 
 def check_model_weights(model, large_value_threshold=1e6):
     for name, param in model.named_parameters():
