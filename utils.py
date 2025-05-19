@@ -91,7 +91,24 @@ def num_flpo_routes(n_facilities, n_drones):
 
     return n_routes_flip[::-1]
 
+def load_model(path, model_classes, args = None, device='cuda', weights_only = True):
+    checkpoint = torch.load(path, map_location=device,weights_only=weights_only)
+    model_class_name = checkpoint['model_class']
+    init_args = checkpoint['init_args']
+    state_dict = checkpoint['state_dict']
 
+    # Inject the right device
+    init_args['device'] = device
+
+    model_class = model_classes[model_class_name]
+    if args is None:
+        model = model_class(**init_args)
+    else:
+        model = model_class(**args)
+    model.load_state_dict(state_dict)
+    model.to(device)
+    model.eval()
+    return model
 def generate_unit_circle_cities(B, N, d):
     """
     Generates a PyTorch tensor of size (B, N, d), representing B batches
