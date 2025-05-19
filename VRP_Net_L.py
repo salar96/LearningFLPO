@@ -199,12 +199,15 @@ class Decoder(nn.Module):
         
         scores = torch.bmm(query, E.transpose(1, 2)) / math.sqrt(self.hidden_dim)
         scores = scores.squeeze(1) # (B , n)
-        
-        
-        visited_cities_penalty = memory_key_padding_mask.float() * -1e6
-        scores += visited_cities_penalty
+        # print("memory mask is: \n", memory_key_padding_mask)
         if relevance_mask is not None:
-            scores += relevance_mask * -1.0
+            # print("rel mask is: \n", relevance_mask)
+            memory_key_padding_mask = (relevance_mask | memory_key_padding_mask).float()
+        # print("mask after is: \n" , memory_key_padding_mask)
+        memory_key_padding_mask[:,-1] = 0
+        scores += memory_key_padding_mask * -1e6
+        
+          
 
         attn_weights = torch.softmax(scores, dim=-1)
         attn_weights = torch.clamp(attn_weights, min=1e-9)
