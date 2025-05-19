@@ -124,6 +124,7 @@ def Adam_at_beta(
     beta_min,
     beta,
     D_max_range,
+    tol = 1e-3,
     allowPrint=False,
 ):
 
@@ -147,7 +148,10 @@ def Adam_at_beta(
         G = F_base.grad
         with torch.no_grad():
             Norm_G = torch.norm(G).item()
-
+        if Norm_G < tol:
+            if allowPrint:
+                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {FreeEnergy:.4e}')
+            break
         # optimizer step
         optimizer.step()
 

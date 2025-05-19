@@ -14,6 +14,7 @@ def anneal(
     beta_max,
     beta_grow,
     D_max_range,
+    tol,
     optimizer_name,
     allowPrint,
 ):
@@ -67,7 +68,8 @@ def anneal(
                 optim_step,
                 beta_min,
                 beta,
-                D_max_range=D_max_range,
+                D_max_range,
+                tol,
                 allowPrint=False,
             )
 
@@ -77,7 +79,7 @@ def anneal(
         # print data
         if allowPrint:
             print(
-                f"beta: {beta:.4e}\tFreeE: {torch.mean(FreeEnergy):.4f}\tGrad: {torch.abs(torch.max(G)):.4e}"
+                f"beta: {beta:.4e}\tFreeE: {torch.mean(FreeEnergy):.4f}\tGrad: {torch.norm(G):.4e}"
             )
         # update beta
         beta = beta * beta_grow
