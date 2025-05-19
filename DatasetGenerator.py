@@ -17,7 +17,15 @@ import torch
 
 
 def generate_dataset(
-    num_drones, n_drone_clusters, drone_cluster_split, num_facilities, dim_, device
+    num_drones, 
+    n_drone_clusters, 
+    drone_cluster_split,
+    num_facilities, 
+    dim_, 
+    device,
+    drone_cluster_std_range = [0.01, 0.05], 
+    F_noise_std = 0.005,
+    F_noise_mean = 0.0
 ):
     # Assign start location to each drone
     drone_cnt = 0
@@ -32,7 +40,7 @@ def generate_dataset(
             torch.rand(1, dim_).repeat(n_drones, 1).unsqueeze(1).to(device)
         )
         drone_cluster_std = (
-            ((0.01 - 0.05) * torch.rand(1, dim_) + 0.05)
+            ((drone_cluster_std_range[0] - drone_cluster_std_range[1]) * torch.rand(1, dim_) + drone_cluster_std_range[1])
             .repeat(n_drones, 1)
             .unsqueeze(1)
             .to(device)
@@ -54,10 +62,15 @@ def generate_dataset(
     # Create the data tensor
     F_means = torch.mean(START_locs, dim=0).repeat(num_facilities, 1)
     F_noise = torch.normal(
-        mean=torch.zeros(num_facilities, 1, device=device),
-        std=0.001 * torch.ones(num_facilities, 1, device=device),
+        mean = F_noise_mean * torch.ones(num_facilities, dim_, device=device),
+        std = F_noise_std * torch.ones(num_facilities, dim_, device=device),
     )
     F_base = (F_means + F_noise).unsqueeze(0).requires_grad_()
 
+    assert F_base.requires_grad == True
+    assert START_locs.requires_grad == False
+    assert END_locs.requires_grad == False
+
     print("Data Created.")
+
     return START_locs, F_base, END_locs

@@ -16,9 +16,11 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
     D_min_drones = utils.route_cost(data, actions).view(-1, 1)
 
     if returnGrad:
+        # grad D_mins w.r.t. F_locs: shape = num_drones x num_facilities x dim_facility
+        # DO NOT TAKE GRADIENTS WRT F_BASE
         gradient = torch.autograd.grad(
             outputs=D_min_drones,
-            inputs=F_base,
+            inputs=F_locs,
             grad_outputs=torch.ones_like(D_min_drones),
         )
 
