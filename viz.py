@@ -1,98 +1,146 @@
-import torch
+import plotly.graph_objects as go
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-import matplotlib.patheffects as PathEffects
-import matplotlib
-
-def plot_UAV_FLPO(
-    drone_START, drone_END, Facilities,
-    figuresize=(8, 6),
-    annotate=True,
-    save_path=None,
-    show_map=False,
-    map_zoom=12,
-    return_fig=False
-):
-    # Convert tensors to NumPy
+from matplotlib import pyplot as plt
+def plot_UAV_FLPO(drone_START, drone_END, Facilities, figuresize=(6, 5)):
     start_locs = drone_START.squeeze(1).cpu().numpy()
     end_locs = drone_END.squeeze(1).cpu().numpy()
     f_locs = Facilities.squeeze(0).detach().cpu().numpy()
 
-    B = start_locs.shape[0]  # Number of drones
-
-    # Create figure and axis
-    fig, ax = plt.subplots(figsize=figuresize)
-
-    # Get a qualitative colormap
-    cmap = matplotlib.colormaps['tab10'] if B <= 10 else matplotlib.colormaps['tab20']
-
-    colors = [cmap(i % cmap.N) for i in range(B)]
-
-    # Plot start and end points for each drone in unique colors
-    for i in range(B):
-        ax.scatter(*start_locs[i], color=colors[i], marker='X', s=100,
-                   edgecolor='black', linewidth=0.5, label=f'Drone {i} Start')
-        ax.scatter(*end_locs[i], color=colors[i], marker='o', s=50,
-                   edgecolor='black', linewidth=0.5, label=f'Drone {i} End')
-
-        if annotate:
-            ax.text(*start_locs[i], f'{i}S', fontsize=8, ha='right', va='bottom',
-                    path_effects=[PathEffects.withStroke(linewidth=2, foreground='white')])
-            ax.text(*end_locs[i], f'{i}E', fontsize=8, ha='left', va='top',
-                    path_effects=[PathEffects.withStroke(linewidth=2, foreground='white')])
-
-    # Plot facilities
-    ax.scatter(f_locs[:, 0], f_locs[:, 1], color='black', marker='^', s=90,
-               edgecolor='white', linewidth=0.7, label='Facility')
-    if annotate:
-        for i, loc in enumerate(f_locs):
-            txt = ax.text(loc[0], loc[1], f'F{i}', fontsize=9, weight='bold', ha='center', va='center', color='black')
-            txt.set_path_effects([PathEffects.withStroke(linewidth=2, foreground='white')])
-
-    # Add basemap using a valid tile provider
-    if show_map:
-        import contextily as ctx
-        import geopandas as gpd
-        from shapely.geometry import Point
-
-        # Combine all points for map bounds
-        all_coords = np.vstack([start_locs, end_locs, f_locs])
-        points = [Point(xy) for xy in all_coords]
-        gdf = gpd.GeoDataFrame(geometry=points, crs="EPSG:4326").to_crs(epsg=3857)
-
-        # Plot invisible points to force extent
-        gdf.plot(ax=ax, alpha=0)
-
-        # Use CartoDB Positron instead of Stamen
-        ctx.add_basemap(ax, source=ctx.providers.CartoDB.Positron, zoom=map_zoom)
-        ax.set_axis_off()
-    else:
-        ax.set_facecolor("#f9f9f9")
-        ax.grid(True, linestyle='--', alpha=0.5)
-        ax.set_xlabel("X Coordinate")
-        ax.set_ylabel("Y Coordinate")
-
-    ax.set_title("UAV Start-End Locations with Facilities", fontsize=14, weight='bold')
-    ax.legend(loc='upper right', fontsize=8, frameon=True)
-
-    # Save or return
-    if save_path:
-        fig.savefig(save_path, dpi=300, bbox_inches='tight', format=save_path.split('.')[-1])
+    plt.figure(figsize=figuresize)
+    plt.scatter(
+        start_locs[:, 0], start_locs[:, 1], color="violet", marker="X", alpha=0.5
+    )
+    plt.scatter(end_locs[:, 0], end_locs[:, 1], color="red", marker=".")
+    plt.scatter(f_locs[:, 0], f_locs[:, 1], color="black", marker="^")
+    plt.grid()
     plt.show()
-    if return_fig:
-        return fig
-    
+
+def plot_UAV_FLPO_3D(drone_START, drone_END, Facilities,
+                     start_altitudes=None, end_altitudes=None, facility_heights=None,
+                     scene_title="UAV Spatial Deployment", output_html=None):
+    """
+    3D interactive UAV start/end locations and service facilities.
+
+    Parameters
+    ----------
+    drone_START : torch.Tensor or array-like, shape (B, 1, 2)
+        XY start coordinates.
+    drone_END   : torch.Tensor or array-like, shape (B, 1, 2)
+        XY end   coordinates.
+    Facilities  : torch.Tensor or array-like, shape (F, 2)
+        XY facility coordinates.
+    start_altitudes : array-like of shape (B,), optional
+        Z heights for start points. Defaults to +10 units.
+    end_altitudes   : array-like of shape (B,), optional
+        Z heights for end   points. Defaults to +5 units.
+    facility_heights: array-like of shape (F,), optional
+        Z heights (building heights). Defaults to +2 units.
+    scene_title    : str
+        Title for the 3D scene.
+    output_html    : str or None
+        If provided, write the scene to this HTML file and return filepath.
+    """
+
+    # Convert tensors to numpy
+    def to_np(x,se):
+        if hasattr(x, "cpu"):
+            x = x.detach().cpu().numpy()
+        return np.squeeze(x, axis=1) if se else np.squeeze(x, axis=0)
+
+    start_xy = to_np(drone_START,1)
+    end_xy   = to_np(drone_END,1)
+    fac_xy   = to_np(Facilities,0)
+
+    B = start_xy.shape[0]
+    F = fac_xy.shape[0]
+
+    start_z = np.full(B, 1.0) if start_altitudes is None else np.array(start_altitudes)
+    end_z   = np.full(B, 1.0)  if end_altitudes   is None else np.array(end_altitudes)
+    fac_z   = np.full(F, 1.0)  if facility_heights is None else np.array(facility_heights)
+
+    fig = go.Figure()
+
+    # Start locations (drones taking off)
+    fig.add_trace(go.Scatter3d(
+        x=start_xy[:, 0], y=start_xy[:, 1], z=start_z,
+        mode='markers',
+        marker=dict(
+            size=8,
+            symbol='diamond',
+            color='cyan',
+            opacity=0.7,
+            line=dict(color='white', width=1)
+        ),
+        name='Drone Start'
+    ))
+
+    # End locations (drones landing)
+    fig.add_trace(go.Scatter3d(
+        x=end_xy[:, 0], y=end_xy[:, 1], z=end_z,
+        mode='markers',
+        marker=dict(
+            size=6,
+            symbol='circle',
+            color='orange',
+            opacity=0.9
+        ),
+        name='Drone End'
+    ))
+
+    # Facility elevation columns and top markers
+    for xi, yi, zi in zip(fac_xy[:, 0], fac_xy[:, 1], fac_z):
+        fig.add_trace(go.Scatter3d(
+            x=[xi, xi], y=[yi, yi], z=[0, zi],
+            mode='lines',
+            line=dict(color='gray', width=3),
+            showlegend=False
+        ))
+
+    fig.add_trace(go.Scatter3d(
+        x=fac_xy[:, 0], y=fac_xy[:, 1], z=fac_z,
+        mode='markers',
+        marker=dict(size=5, symbol='square', color='silver'),
+        name='Facilities'
+    ))
+
+    fig.update_layout(
+        template='plotly_dark',
+        scene=dict(
+            xaxis=dict(title='X', backgroundcolor="rgb(10,10,20)",
+                       gridcolor="gray", zerolinecolor="gray"),
+            yaxis=dict(title='Y', backgroundcolor="rgb(10,10,20)",
+                       gridcolor="gray", zerolinecolor="gray"),
+            zaxis=dict(title='Altitude', backgroundcolor="rgb(10,10,20)",
+                       gridcolor="gray", zerolinecolor="gray"),
+            camera=dict(eye=dict(x=1.5, y=1.5, z=0.7)),
+            aspectmode='data',
+        ),
+        title=dict(text=scene_title, font=dict(size=20), x=0.5),
+        legend=dict(bgcolor='rgba(0,0,0,0.4)', bordercolor='white'),
+        margin=dict(l=0, r=0, b=0, t=30)
+    )
+
+    if output_html:
+        fig.write_html(output_html)
+        return output_html
+    else:
+        fig.show()
 
 
 if __name__ == "__main__":
+    import torch
     torch.manual_seed(0)
     drone_START = torch.rand(5, 1, 2) * 100
     drone_END = torch.rand(5, 1, 2) * 100
     Facilities = torch.rand(1, 3, 2) * 100
-    print(matplotlib.get_backend())
+    
     # Call the function
-    plot_UAV_FLPO(drone_START, drone_END, Facilities,
-                annotate=True,
-                show_map=True,  # Set to False if offline
-                return_fig=False)
+    html_file = plot_UAV_FLPO_3D(
+    drone_START, drone_END, Facilities,
+    start_altitudes=np.linspace(12, 8, len(drone_START)),
+    end_altitudes=np.linspace(6, 4, len(drone_END)),
+    facility_heights=np.random.uniform(1.5, 3.5, size=Facilities.shape[1]),
+    scene_title="UAV Deployment Overview",
+    # output_html="uav_scene.html"
+)
+    print("Saved interactive figure to", html_file)
