@@ -5,6 +5,7 @@ import subprocess
 import numpy as np
 from scipy.spatial.distance import cdist
 
+
 def is_paired_ttest_significant(tensor1, tensor2, alpha=0.05):
     """
     Perform a one-sided paired t-test to check if tensor1 is significantly smaller than tensor2.
@@ -42,19 +43,26 @@ def is_paired_ttest_significant(tensor1, tensor2, alpha=0.05):
     return p_value_one_sided < alpha
 
 
-
 def print_gpu_memory_combined():
     # PyTorch memory stats
-    total_memory = torch.cuda.get_device_properties(0).total_memory / 1e6  # Total GPU memory in MB
+    total_memory = (
+        torch.cuda.get_device_properties(0).total_memory / 1e6
+    )  # Total GPU memory in MB
     allocated_memory = torch.cuda.memory_allocated() / 1e6  # Allocated memory in MB
     reserved_memory = torch.cuda.memory_reserved() / 1e6  # Reserved memory in MB
-    free_memory_pytorch = total_memory - (allocated_memory + reserved_memory)  # Available memory in MB
+    free_memory_pytorch = total_memory - (
+        allocated_memory + reserved_memory
+    )  # Available memory in MB
 
     # NVIDIA-SMI memory stats
     result = subprocess.run(
-        ["nvidia-smi", "--query-gpu=memory.total,memory.used,memory.free", "--format=csv,nounits,noheader"],
+        [
+            "nvidia-smi",
+            "--query-gpu=memory.total,memory.used,memory.free",
+            "--format=csv,nounits,noheader",
+        ],
         stdout=subprocess.PIPE,
-        text=True
+        text=True,
     )
     total, used, free = map(int, result.stdout.strip().split(","))
 
@@ -68,39 +76,46 @@ def print_gpu_memory_combined():
     print(f"  Total Memory: {total} MB")
     print(f"  Used Memory: {used} MB")
     print(f"  Free Memory: {free} MB")
-    
+
+
 def route_cost(cities, routes):
     B, N, _ = cities.shape
     routes = routes.squeeze(-1).long()  # Convert to long for indexing
-    ordered_cities = cities[torch.arange(B).unsqueeze(1), routes]  # Reorder cities based on routes
-    diffs = ordered_cities[:, :-1] - ordered_cities[:, 1:]  # Compute differences between consecutive cities
-    distances = torch.norm(diffs, p=2, dim=2)**2  # Euclidean distances
+    ordered_cities = cities[
+        torch.arange(B).unsqueeze(1), routes
+    ]  # Reorder cities based on routes
+    diffs = (
+        ordered_cities[:, :-1] - ordered_cities[:, 1:]
+    )  # Compute differences between consecutive cities
+    distances = torch.norm(diffs, p=2, dim=2) ** 2  # Euclidean distances
     total_distances = distances.sum(dim=1)  # Sum distances for each batch
     return total_distances
 
+
 def num_flpo_routes(n_facilities, n_drones):
     n_int_stages = n_facilities + 1
-    n_routes_flip = [[]]*n_int_stages
+    n_routes_flip = [[]] * n_int_stages
 
     for i in range(n_int_stages):
         if i == 0:
-            n_routes_flip[i] = [1]*(n_facilities+1)
-        elif i > 0 and i < n_int_stages-1:
-            n_routes_flip[i] = [sum(n_routes_flip[i-1])] * n_facilities
-            n_routes_flip[i].append(1) # only one path from stopping state
+            n_routes_flip[i] = [1] * (n_facilities + 1)
+        elif i > 0 and i < n_int_stages - 1:
+            n_routes_flip[i] = [sum(n_routes_flip[i - 1])] * n_facilities
+            n_routes_flip[i].append(1)  # only one path from stopping state
         elif i == n_int_stages - 1:
-            n_routes_flip[i] = [sum(n_routes_flip[i-1])] * n_drones
+            n_routes_flip[i] = [sum(n_routes_flip[i - 1])] * n_drones
 
     return n_routes_flip[::-1]
 
-def load_model(path, model_classes, args = None, device='cuda', weights_only = True):
-    checkpoint = torch.load(path, map_location=device,weights_only=weights_only)
-    model_class_name = checkpoint['model_class']
-    init_args = checkpoint['init_args']
-    state_dict = checkpoint['state_dict']
+
+def load_model(path, model_classes, args=None, device="cuda", weights_only=True):
+    checkpoint = torch.load(path, map_location=device, weights_only=weights_only)
+    model_class_name = checkpoint["model_class"]
+    init_args = checkpoint["init_args"]
+    state_dict = checkpoint["state_dict"]
 
     # Inject the right device
-    init_args['device'] = device
+    init_args["device"] = device
 
     model_class = model_classes[model_class_name]
     if args is None:
@@ -111,16 +126,18 @@ def load_model(path, model_classes, args = None, device='cuda', weights_only = T
     model.to(device)
     model.eval()
     return model
+
+
 def generate_unit_circle_cities(B, N, d):
     """
     Generates a PyTorch tensor of size (B, N, d), representing B batches
     of N cities in d-dimensional space, where cities are randomly placed on the unit circle.
-    
+
     Args:
         B (int): Number of batches.
         N (int): Number of cities in each batch.
         d (int): Number of dimensions (must be at least 2, higher dimensions will have zeros).
-        
+
     Returns:
         torch.Tensor: A tensor of shape (B, N, d) with cities on the unit circle.
     """
@@ -146,15 +163,19 @@ def generate_unit_circle_cities(B, N, d):
     # result[:,0,:] = result[:,-1,:]
     return shuffled_x
 
+
 def check_model_weights(model, large_value_threshold=1e6):
     for name, param in model.named_parameters():
         # Check for NaN
         if torch.isnan(param).any():
             print(f"NaN detected in parameter: {name}")
-        
+
         # Check for large values
         if torch.any(torch.abs(param) > large_value_threshold):
-            print(f"Large value detected in parameter: {name}, max value: {param.abs().max().item()}")
+            print(
+                f"Large value detected in parameter: {name}, max value: {param.abs().max().item()}"
+            )
+
 
 def check_gradients(model, large_grad_threshold=1e6):
     for name, param in model.named_parameters():
@@ -162,20 +183,55 @@ def check_gradients(model, large_grad_threshold=1e6):
             # Check for NaN in gradients
             if torch.isnan(param.grad).any():
                 print(f"NaN detected in gradient of parameter: {name}")
-            
+
             # Check for large gradient values
             if torch.any(torch.abs(param.grad) > large_grad_threshold):
-                print(f"Large gradient detected in parameter: {name}, max gradient: {param.grad.abs().max().item()}")
+                print(
+                    f"Large gradient detected in parameter: {name}, max gradient: {param.grad.abs().max().item()}"
+                )
 
 
 def createBetaArray(b_min, b_max, grow):
     beta = b_min
     beta_array = [beta]
     while beta < b_max:
-        beta = beta*grow
+        beta = beta * grow
         beta_array.append(beta)
     beta_array = torch.tensor(beta_array, dtype=torch.float32)
     return beta_array
+
+
+def logSumExp(D_tensor, beta):
+    # with torch.no_grad():
+    # print(D_tensor)
+    D_min = torch.min(D_tensor, axis=1, keepdims=True)
+    F = (
+        -1
+        / beta
+        * torch.log(
+            torch.sum(
+                torch.exp(-beta * (D_tensor - D_min.values)), axis=1, keepdims=True
+            )
+        )
+        + 1 / beta * torch.log(torch.tensor([D_tensor.shape[1]]))
+        + D_min.values
+    )
+    return F
+
+
+def area_approx_F(D_min, D_max_range, beta, printCalculations=False):
+    min_beta_D_arr = beta * D_min
+    x_max = beta * D_max_range - min_beta_D_arr
+    F_est = -1 / beta * torch.log(1 / x_max * (1 - torch.exp(-x_max))) + D_min
+
+    if printCalculations:
+        print(f"min_beta_D_arr:{min_beta_D_arr}")
+        print(f"x_max:{x_max}")
+        print(f"inside_log:{1/x_max * (1 - torch.exp(-x_max))}")
+        print(f"log:{torch.log(1/x_max * (1 - torch.exp(-x_max)))}")
+        print(f"-1/beta_log:\n{-1/beta * torch.log(1/x_max * (1 - torch.exp(-x_max)))}")
+
+    return F_est
 
 
 coordinates = [
@@ -226,13 +282,10 @@ coordinates = [
     [10, 2676],
     [6807, 2993],
     [5185, 3258],
-    [3023, 1942]
+    [3023, 1942],
 ]
 
 # Convert the list to a PyTorch tensor
 USA_data = torch.tensor(coordinates, dtype=torch.float).unsqueeze(0)
 # 7762 is the max
 USA_data = USA_data / torch.max(USA_data)
-
-
-    
