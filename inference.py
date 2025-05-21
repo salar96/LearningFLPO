@@ -21,7 +21,7 @@ def inference(data , model, method = 'BeamSearch'):
             actions[:, t, 0] = torch.argmax(outs, dim=-1)
             
     elif method == 'BeamSearch':
-        seq, scores = beam_search(model,data,beam_width=10)
+        seq, scores = beam_search(model,data,beam_width=3)
         actions = seq[:,0,:]
     elif method == "sampling":
         actions = torch.zeros(num_data, num_cities, 1).to(device)

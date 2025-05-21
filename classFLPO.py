@@ -34,10 +34,12 @@ class FLPO():
 
 
     def plotFLPO(self):
+        plt.figure(figsize=(4,3))
         plt.scatter(self.nodeLocations[:,0],self.nodeLocations[:,1],marker='o', alpha=0.2, label='nodes: '+str(self.n))
         # for facs in facilityLocations:
         #     plt.scatter(facs[:,0],facs[:,1],marker='v')
         plt.scatter(self.facilityLocations[:,0], self.facilityLocations[:,1], marker='v', label='facilities: '+ str(self.f))
+        # plt.scatter(self.external_facilityLocations[:,0], self.external_facilityLocations[:,1], marker='d', label='ext_facilities: '+ str(self.f))
         plt.scatter(self.destinationLocation[:,0],self.destinationLocation[:,1], marker='D', label='destination: '+ str(np.round(self.destinationLocation.squeeze(), 2)))
         plt.grid()
         plt.legend()

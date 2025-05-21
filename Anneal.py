@@ -39,6 +39,7 @@ def anneal(
                 beta_min,
                 beta,
                 D_max_range=D_max_range,
+                tol = tol,
                 allowPrint=False,
             )
 
@@ -54,6 +55,7 @@ def anneal(
                 beta_min,
                 beta,
                 D_max_range=D_max_range,
+                tol = tol,
                 allowPrint=False,
             )
 
@@ -68,8 +70,8 @@ def anneal(
                 optim_step,
                 beta_min,
                 beta,
-                D_max_range,
-                tol,
+                D_max_range=D_max_range,
+                tol = tol,
                 allowPrint=False,
             )
 

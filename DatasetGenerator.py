@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import pickle
 
 # def generate_dataset(n, cov, k, n_clusters,  scale, seed):
 #     # Generate random means for each cluster
@@ -74,3 +75,21 @@ def generate_dataset(
     print("Data Created.")
 
     return START_locs, F_base, END_locs
+
+def torchFLPO_2_numpyFLPO(START_locs, END_locs, F_base, file_dir, scale):
+
+    node_locations = START_locs.to(torch.float64).numpy().squeeze()
+    destination_location = END_locs[0].to(torch.float64).numpy()
+    facility_location = F_base.to(torch.float64).detach().numpy().squeeze()
+
+    numpyFLPOdata = {}
+    numpyFLPOdata['nodeLocations'] = node_locations
+    numpyFLPOdata['destinationLocation'] = destination_location
+    numpyFLPOdata['facilityLocations'] = facility_location
+    numpyFLPOdata['numFacilities'] = facility_location.shape[0]
+    numpyFLPOdata['numNodes'] = node_locations.shape[0]
+    numpyFLPOdata['scale'] = scale
+
+    with open(file_dir, 'wb') as file:
+        pickle.dump(numpyFLPOdata, file)
+

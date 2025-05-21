@@ -60,7 +60,7 @@ def GD_at_beta0(
 
         # print data
         if allowPrint:
-            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmax_D_min:{torch.max(D_min_drones).detach().item():.3e}")
+            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
 
     return F_base, freeEnergy_drones, G
 
@@ -123,7 +123,7 @@ def GD_at_beta1(
 
         # print data
         if allowPrint:
-            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmax_D_min:{torch.max(D_min_drones).detach().item():.3e}")
+            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
 
     return F_base, freeEnergy_drones, G
 
@@ -148,7 +148,7 @@ def Adam_at_beta(
     for i in range(iters):
 
         D_min_drones, _, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="Greedy", returnGrad=False
+            vrp_net, F_base, S, E, method="BeamSearch", returnGrad=False
         )
         freeEnergy_drones, _ = LSENet_pass(
             lse_net, D_min_drones, D_max_range=D_max_range, beta=beta, beta_min=beta_min
@@ -172,6 +172,6 @@ def Adam_at_beta(
 
         # print data
         if allowPrint:
-            print(f"iter: {i}\tFreeE: {freeEnergy:.4e} Norm gradient: {Norm_G:.3f}")
+            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
 
     return F_base, freeEnergy, G

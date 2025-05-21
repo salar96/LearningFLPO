@@ -17,14 +17,15 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
 
     if returnGrad:
         # grad D_mins w.r.t. F_locs: shape = num_drones x num_facilities x dim_facility
-        # DO NOT TAKE GRADIENTS WRT F_BASE
+        grad_outputs = torch.ones_like(D_min_drones)
         gradient = torch.autograd.grad(
             outputs=D_min_drones,
             inputs=F_locs,
-            grad_outputs=torch.ones_like(D_min_drones),
+            grad_outputs=grad_outputs,
         )
 
         dDmin_dFlocs = gradient[0]
+        # dDmin_dFlocs = jacobian.squeeze().diag().view(-1,1)
 
     else:
         dDmin_dFlocs = None
