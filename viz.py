@@ -55,7 +55,7 @@ def plot_UAV_FLPO_3D(drone_START, drone_END, Facilities,
     F = fac_xy.shape[0]
 
     start_z = np.full(B, 1.0) if start_altitudes is None else np.array(start_altitudes)
-    end_z   = np.full(B, 1.0)  if end_altitudes   is None else np.array(end_altitudes)
+    end_z   = np.full(B, 0.0)  if end_altitudes   is None else np.array(end_altitudes)
     fac_z   = np.full(F, 1.0)  if facility_heights is None else np.array(facility_heights)
 
     fig = go.Figure()
@@ -63,29 +63,27 @@ def plot_UAV_FLPO_3D(drone_START, drone_END, Facilities,
     # Start locations (drones taking off)
     fig.add_trace(go.Scatter3d(
         x=start_xy[:, 0], y=start_xy[:, 1], z=start_z,
-        mode='markers',
-        marker=dict(
-            size=8,
-            symbol='diamond',
-            color='cyan',
-            opacity=0.7,
-            line=dict(color='white', width=1)
-        ),
+        mode='text',
+        text=['𒅒'] * len(start_xy),
+        textfont=dict(
+        size=16,         # Adjust this value to change icon size
+        color='cyan'
+    ),
         name='Drone Start'
     ))
 
     # End locations (drones landing)
     fig.add_trace(go.Scatter3d(
         x=end_xy[:, 0], y=end_xy[:, 1], z=end_z,
-        mode='markers',
-        marker=dict(
-            size=6,
-            symbol='circle',
-            color='orange',
-            opacity=0.9
-        ),
+        mode='text',
+        text=['📍'] * len(end_xy),
+        textfont=dict(
+        size=20,         # Adjust this value to change icon size
+        color='red'
+    ),
         name='Drone End'
     ))
+
 
     # Facility elevation columns and top markers
     for xi, yi, zi in zip(fac_xy[:, 0], fac_xy[:, 1], fac_z):
@@ -110,7 +108,7 @@ def plot_UAV_FLPO_3D(drone_START, drone_END, Facilities,
                        gridcolor="gray", zerolinecolor="gray"),
             yaxis=dict(title='Y', backgroundcolor="rgb(10,10,20)",
                        gridcolor="gray", zerolinecolor="gray"),
-            zaxis=dict(title='Altitude', backgroundcolor="rgb(10,10,20)",
+            zaxis=dict(title='Z', backgroundcolor="rgb(10,10,20)",
                        gridcolor="gray", zerolinecolor="gray"),
             camera=dict(eye=dict(x=1.5, y=1.5, z=0.7)),
             aspectmode='data',
@@ -141,6 +139,6 @@ if __name__ == "__main__":
     end_altitudes=np.linspace(6, 4, len(drone_END)),
     facility_heights=np.random.uniform(1.5, 3.5, size=Facilities.shape[1]),
     scene_title="UAV Deployment Overview",
-    # output_html="uav_scene.html"
+    output_html="uav_scene.html"
 )
     print("Saved interactive figure to", html_file)
