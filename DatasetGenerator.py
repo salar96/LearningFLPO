@@ -16,7 +16,6 @@ import pickle
 #     dest = np.array([[0.9,0.8]])*scale
 #     return nodes,Y_s,dest
 
-
 def generate_dataset(
     num_drones, 
     n_drone_clusters, 
@@ -56,7 +55,7 @@ def generate_dataset(
 
     assert not START_locs.requires_grad, "set requires_grad for START_locs to 0"
     # Assign destination location to each drone
-    END_locs = torch.zeros(
+    END_locs = 0.5*torch.ones(
         (num_drones, 1, dim_), requires_grad=False, device=device
     )  # torch.rand(num_drones, 1, dim_, requires_grad=False, device=device)
 
