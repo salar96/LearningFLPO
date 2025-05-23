@@ -6,41 +6,99 @@ import numpy as np
 from scipy.spatial.distance import cdist
 
 
-def is_paired_ttest_significant(tensor1, tensor2, alpha=0.05):
-    """
-    Perform a one-sided paired t-test to check if tensor1 is significantly smaller than tensor2.
+class UAV_Net:
+    def __init__(self, drones, num_stations, distance='sqeuclidean') -> None:
+        super().__init__()
+        
+        self.drones = drones
+        self.N_drones= len(drones)
+        self.N_stations=num_stations
+        self.stage_horizon=self.N_stations+1
+        self.gamma_k_length=self.N_stations+1
+        self.distance=distance
+        
+        return
 
-    Args:
-        tensor1 (torch.Tensor): 1D tensor of values.
-        tensor2 (torch.Tensor): 1D tensor of values (same length as tensor1).
-        alpha (float): Significance level (default is 0.05).
+    def return_stagewise_cost(self,params_drones): #params is like stations
+        my_inf = 1e6;
+        
+        D_ss=[0]*self.N_drones
+        for drone_id, _ in enumerate(self.drones):
+            params = params_drones[drone_id]
+            d_F=cdist(params,params,self.distance)
+            d_F=d_F+np.diag([my_inf]*self.N_stations)
+            d_delta_to_f=np.array([my_inf]*self.N_stations).reshape(1,-1)
+            d_df=np.concatenate((d_F,d_delta_to_f),axis=0)
+            stage=np.concatenate((params,np.array(self.drones[drone_id][1]).reshape(1,-1)),axis=0)
+            D_s=[0]*(self.stage_horizon+1)
+            stage_0=np.array(self.drones[drone_id][0]).reshape(1,-1)
+            D_s[0]=cdist(stage_0,stage,self.distance)
+            d_f_to_delta=cdist(params,np.array(self.drones[drone_id][1]).reshape(1,-1),self.distance)
+            d_last=np.concatenate((d_f_to_delta,np.array([0]).reshape(1,-1)),axis=0)
+            d=np.concatenate((d_df,d_last),axis=1)
+            D_s[1:self.stage_horizon] = [d] * (self.stage_horizon - 1)
+            d_l=[my_inf]*(self.gamma_k_length-1)
+            d_l.append(0.0)
+            D_s[-1]=np.array(d_l).reshape(-1,1)
+            D_ss[drone_id]=D_s
+        
+        return D_ss
+    
+def calc_associations(D_ss,beta):
+        """ This function calculates the association probabilities over all drones for all stages.
+        The input D_ss is a list, each element is another list, where each element of the latter is cost matrix 
+        from one stage to another.
+        beta is the temperature parameter. """
+        p=[]
+    
+        for D_s in D_ss:
+            K=len(D_s)
+            D=D_s[::-1]
+            out_D=[0]*(K+1)
+            out_D[0]=np.array([0.0]).reshape(-1,1)
+            out_p=[0]*(K+1)
+            out_p[0]=np.array([1.0]).reshape(-1,1)
+            out=[0]*(K+1)
+            out[0]=np.array([1.0]).reshape(-1,1)
+            for i in range(1,K+1):
+                out_D[i]=(D[i-1]+np.repeat(np.transpose(out_D[i-1]),D[i-1].shape[0],axis=0))
+                m=out_D[i].min(axis=1,keepdims=True)
+                exp_D=np.exp(np.multiply(-beta,out_D[i]-m))
+                out[i]=np.sum(np.multiply(exp_D,np.tile(out[i-1], (1,D[i-1].shape[0])).T),axis=1,keepdims=True)
+                out_p[i]=np.divide(np.multiply(exp_D,out[i-1].T),out[i])
+                out_D[i]=m
+            p.append(out_p[::-1][:-1])
+        
+        return p
+def calc_routs(P_ss):
+        """ Given the associations for each drone, return the routs (facility ids) for each. """
+        O=[]
+        A=[]
+        for i in range(len(P_ss)):
+          indices = [0]
+          first_action = np.zeros(len(P_ss[i]))
+          first_action[0]=1
+          o=[first_action]
+          a = [0]
+          for p in P_ss[i]:
+              m = np.argmax(p[indices[-1],:])
+              a.append(m+1)
+              o.append(np.concatenate(([0],p[indices[-1],:])))
+              indices.append(m)
+          o.pop()
+          a.pop()
+          O.append(o)
+          A.append(a)
+        return np.array(O),np.array(A) # recently changed A to np.array(A)
 
-    Returns:
-        bool: True if the p-value for the one-sided test is below alpha, False otherwise.
-    """
-    # Ensure inputs are 1D tensors of the same length
-    if tensor1.ndim != 1 or tensor2.ndim != 1:
-        raise ValueError("Both tensors must be 1-dimensional.")
-    if len(tensor1) != len(tensor2):
-        raise ValueError("Both tensors must have the same length.")
-
-    # Convert tensors to numpy arrays
-    array1 = tensor1.cpu().numpy()
-    array2 = tensor2.cpu().numpy()
-
-    # Perform the paired t-test
-    t_stat, p_value_two_sided = ttest_rel(array1, array2)
-
-    # Adjust for one-sided test (assuming we test if tensor1 < tensor2)
-    if t_stat > 0:
-        # If the mean of tensor1 is greater than tensor2, the one-sided p-value is 1 - p/2
-        p_value_one_sided = 1 - (p_value_two_sided / 2)
-    else:
-        # If the mean of tensor1 is smaller than tensor2, the one-sided p-value is p/2
-        p_value_one_sided = p_value_two_sided / 2
-
-    # Check if the one-sided p-value is below the significance level
-    return p_value_one_sided < alpha
+def generate_true_labels(data_batch, beta):
+    num_facilities = data_batch.shape[1]-2
+    drones = torch.cat((data_batch[:,0:1,:], data_batch[:,-1:,:]), dim=1).detach().cpu().numpy()
+    uav_net = UAV_Net(drones, num_facilities)
+    params = data_batch[:,1:-1,:].detach().cpu().numpy()
+    P_ss = calc_associations(uav_net.return_stagewise_cost(params),beta = beta)
+    label_outs , label_actions = calc_routs(P_ss)
+    return label_outs , label_actions
 
 
 def print_gpu_memory_combined():
