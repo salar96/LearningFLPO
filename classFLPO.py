@@ -42,7 +42,7 @@ class FLPO():
         # plt.scatter(self.external_facilityLocations[:,0], self.external_facilityLocations[:,1], marker='d', label='ext_facilities: '+ str(self.f))
         plt.scatter(self.destinationLocation[:,0],self.destinationLocation[:,1], marker='D', label='destination: '+ str(np.round(self.destinationLocation.squeeze(), 2)))
         plt.grid()
-        plt.legend()
+        # plt.legend()
         # legend = ['nodes: '+ str(self.n), 'facilities: ' + str(self.f), 'destination: ' + str(np.round(self.destinationLocation.squeeze(), 2))]
         # plt.legend(legend)
         plt.show()
