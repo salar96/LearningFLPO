@@ -4,6 +4,7 @@ from scipy.stats import ttest_rel
 import subprocess
 import numpy as np
 from scipy.spatial.distance import cdist
+import uavFLPO as UFO
 
 
 class UAV_Net:
@@ -70,6 +71,7 @@ def calc_associations(D_ss,beta):
             p.append(out_p[::-1][:-1])
         
         return p
+
 def calc_routs(P_ss):
         """ Given the associations for each drone, return the routs (facility ids) for each. """
         O=[]
@@ -89,7 +91,7 @@ def calc_routs(P_ss):
           a.pop()
           O.append(o)
           A.append(a)
-        return np.array(O),np.array(A) # recently changed A to np.array(A)
+        return np.array(O, dtype=object),np.array(A, dtype=object) # recently changed A to np.array(A)
 
 def generate_true_labels(data_batch, beta):
     num_facilities = data_batch.shape[1]-2
@@ -97,9 +99,29 @@ def generate_true_labels(data_batch, beta):
     uav_net = UAV_Net(drones, num_facilities)
     params = data_batch[:,1:-1,:].detach().cpu().numpy()
     P_ss = calc_associations(uav_net.return_stagewise_cost(params),beta = beta)
+    # print(P_ss[0])
     label_outs , label_actions = calc_routs(P_ss)
     return label_outs , label_actions
 
+def generate_true_labels1(data_batch, beta):
+    num_facilities = data_batch.shape[1]-2
+    drones = torch.cat((data_batch[:,0:1,:], data_batch[:,-1:,:]), dim=1).detach().cpu().numpy()
+    # calculate associations for each drone
+    P_ss = []
+    params_batch = data_batch[:,1:-1,:].detach().cpu().numpy()
+    # print(f'params_batch:{params_batch}')
+    for i, drone in enumerate(drones):
+        start_loc = drone[0].reshape(-1,2)
+        end_loc = drone[1].reshape(-1,2)
+        flpo_agent = UFO.FLPO(start_loc, end_loc, num_facilities, scale=1.0, disType='sqeuclidean', selfHop=False)
+        params = params_batch[i]
+        # print(f'params:{params}')
+        D_s, _ = flpo_agent.returnStagewiseCost(params)
+        _, _, _, _, P_s = flpo_agent.backPropDP(D_s, beta=beta, returnPb=True)
+        P_ss.append(P_s)
+    # calculate routs and action labels
+    label_outs , label_actions = calc_routs(P_ss)
+    return label_outs, label_actions
 
 def print_gpu_memory_combined():
     # PyTorch memory stats
