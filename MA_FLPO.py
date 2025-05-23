@@ -1,15 +1,6 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import time
-from scipy.optimize import minimize
-import pickle
-from scipy.spatial.distance import cdist
-from scipy.optimize import LinearConstraint
-from scipy.special import *
-import cvxpy as cp
 
 
-class FLPO():
+def flpoAgent():
 
     def __init__(self, filename:str, plotFLPO:bool, disType:str, selfHop:bool):
 
@@ -17,8 +8,9 @@ class FLPO():
         with open(filename, 'rb') as file:
             data = pickle.load(file)
 
-        self.n = data['numNodes']
+        # self.n = data['numNodes']
         self.f = data['numFacilities']
+        self.startLoc = 
         self.nodeLocations = data['nodeLocations']
         self.destinationLocation = data['destinationLocation']
         self.facilityLocations = data['facilityLocations']
@@ -337,8 +329,3 @@ class FLPO():
                 print(f'time:{t:.3e}\tdt:{dt:.3f}\tFdot:{Fdot:.6f}\tF:{F:.6f}')
         
         return Y_next, F, Fdot
-
-    
-
-
-
