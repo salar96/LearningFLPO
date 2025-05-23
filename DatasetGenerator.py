@@ -25,7 +25,8 @@ def generate_dataset(
     device,
     drone_cluster_std_range = [0.01, 0.05], 
     F_noise_std = 0.005,
-    F_noise_mean = 0.0
+    F_noise_mean = 0.0,
+    num_distinct_ends = 1
 ):
     # Assign start location to each drone
     drone_cnt = 0
@@ -55,9 +56,16 @@ def generate_dataset(
 
     assert not START_locs.requires_grad, "set requires_grad for START_locs to 0"
     # Assign destination location to each drone
-    END_locs = 0.5*torch.ones(
-        (num_drones, 1, dim_), requires_grad=False, device=device
-    )  # torch.rand(num_drones, 1, dim_, requires_grad=False, device=device)
+    num_ends = num_drones // num_distinct_ends
+    remaining_ends = num_drones - num_ends*num_distinct_ends
+    
+    END_locs = torch.rand(1,1,dim_, requires_grad=False, device=device).expand(num_ends,-1,-1)
+    for _ in range(num_distinct_ends-1):
+        END_locs = torch.cat((END_locs,torch.rand(1,1,dim_, requires_grad=False, device=device).expand(num_ends,-1,-1)),dim=0)
+    END_locs = torch.cat((END_locs,torch.rand(1,1,dim_, requires_grad=False, device=device).expand(remaining_ends,-1,-1)),dim=0)
+    # END_locs = 0.5*torch.ones(
+    #     (num_drones, 1, dim_), requires_grad=False, device=device
+    # )  # torch.rand(num_drones, 1, dim_, requires_grad=False, device=device)
 
     # Create the data tensor
     F_means = torch.mean(START_locs, dim=0).repeat(num_facilities, 1)
@@ -77,9 +85,9 @@ def generate_dataset(
 
 def torchFLPO_2_numpyFLPO(START_locs, END_locs, F_base, file_dir, scale):
 
-    node_locations = START_locs.to(torch.float64).numpy().squeeze()
-    destination_location = END_locs[0].to(torch.float64).numpy()
-    facility_location = F_base.to(torch.float64).detach().numpy().squeeze()
+    node_locations = START_locs.cpu().numpy().squeeze()
+    destination_location = END_locs[0].cpu().numpy()
+    facility_location = F_base.detach().cpu().numpy().squeeze()
 
     numpyFLPOdata = {}
     numpyFLPOdata['nodeLocations'] = node_locations
