@@ -72,7 +72,7 @@ def anneal(
                 beta,
                 D_max_range=D_max_range,
                 tol = tol,
-                allowPrint=True,
+                allowPrint=False,
             )
 
         # store data

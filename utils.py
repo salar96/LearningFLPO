@@ -91,7 +91,7 @@ def calc_routs(P_ss):
           a.pop()
           O.append(o)
           A.append(a)
-        return np.array(O, dtype=object),np.array(A, dtype=object) # recently changed A to np.array(A)
+        return np.array(O),np.array(A) # recently changed A to np.array(A)
 
 def generate_true_labels(data_batch, beta):
     num_facilities = data_batch.shape[1]-2

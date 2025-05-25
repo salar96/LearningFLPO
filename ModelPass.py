@@ -6,13 +6,17 @@ from inference import inference
 
 def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
     num_drones = S.shape[0]
+    num_facilities = F_base.shape[1]
     F_locs = F_base.expand(num_drones, -1, -1)  # view, shares grad with F_base
     data = torch.cat((S, F_locs, E), dim=1)  # shape: (Nd, Nf+2, D)
     s = time.time()
     with torch.no_grad():
-        _, actions = utils.generate_true_labels(data, 1e8)
-        actions = torch.tensor(actions).unsqueeze(-1)
-        # _, actions = inference(data, vrp_net, method)  # Grad wrt actions not needed
+        if num_facilities < 80:
+            _, actions = utils.generate_true_labels(data, 1e8)
+            
+            actions = torch.tensor(actions).unsqueeze(-1)
+        else:
+            _, actions = inference(data, vrp_net, method)  # For large networks we use SPN
     e = time.time()
 
     D_min_drones = utils.route_cost(data, actions).view(-1, 1)
