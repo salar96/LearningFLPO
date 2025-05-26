@@ -11,7 +11,7 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
     data = torch.cat((S, F_locs, E), dim=1)  # shape: (Nd, Nf+2, D)
     s = time.time()
     with torch.no_grad():
-        if num_facilities < 80:
+        if num_facilities < 500:
             _, actions = utils.generate_true_labels(data, 1e8)
             
             actions = torch.tensor(actions).unsqueeze(-1)

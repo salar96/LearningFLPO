@@ -15,12 +15,8 @@ def plot_UAV_FLPO(drone_START, drone_END, Facilities, figuresize=(6, 5)):
     plt.scatter(start_locs[:, 0], start_locs[:, 1], color="black", marker="o", alpha=0.5, label="S")
     plt.scatter(end_locs[:, 0], end_locs[:, 1], color="red", marker="*", label="E")
     plt.scatter(f_locs[:, 0], f_locs[:, 1], color="blue", marker="^", label="F")
-    # plt.grid()
     plt.legend(facecolor = facecolor, edgecolor= edgecolor)
     plt.axis('off')
-    # plt.title("UAV Flight Planning Layout")
-    # plt.xlabel("X Coordinate")
-    # plt.ylabel("Y Coordinate")
     plt.show()
 
 

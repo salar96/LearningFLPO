@@ -17,10 +17,11 @@ def anneal(
     tol,
     optimizer_name,
     allowPrint,
+    
 ):
 
     beta = beta_min
-    
+    Y_arr = []
     b_arr = []
     F_arr = []
 
@@ -73,9 +74,11 @@ def anneal(
                 D_max_range=D_max_range,
                 tol = tol,
                 allowPrint=False,
+                return_list = False
             )
 
         # store data
+        Y_arr.append(F_base.clone().detach())
         b_arr.append(beta)
         F_arr.append(torch.mean(FreeEnergy).detach().item())
         # print data
@@ -86,4 +89,4 @@ def anneal(
         # update beta
         beta = beta * beta_grow
 
-    return F_base, b_arr, F_arr
+    return Y_arr, b_arr, F_arr

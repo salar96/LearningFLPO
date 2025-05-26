@@ -141,10 +141,12 @@ def Adam_at_beta(
     D_max_range,
     tol = 1e-3,
     allowPrint=False,
+    return_list = False
 ):
 
     optimizer = torch.optim.Adam([F_base], lr=optim_stepsize)
-
+    if return_list:
+        Y_arr = [F_base.clone().detach()]
     for i in range(iters):
 
         D_min_drones, _, _ = VRPNet_pass(
@@ -169,9 +171,12 @@ def Adam_at_beta(
             break
         # optimizer step
         optimizer.step()
-
+        if return_list:
+            Y_arr.append(F_base.clone().detach())
         # print data
         if allowPrint:
             print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
-
-    return F_base, freeEnergy, G
+    if return_list:
+        return Y_arr, freeEnergy, G
+    else:
+        return F_base, freeEnergy, G
