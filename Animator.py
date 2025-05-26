@@ -16,8 +16,8 @@ def animate_UAV_FLPO(
     interval=200,
     save_path="facility_movement.gif",
 ):
-    facecolor = "#D3D3D3"
-    edgecolor = "#000000"
+    facecolor = "#1a1a1a"
+    edgecolor = "#08D3D6"
     start_locs = drone_START.squeeze(1).cpu().numpy()
     end_locs = drone_END.squeeze(1).cpu().numpy()
     # Facilities_over_time is a list of facility location arrays
@@ -32,7 +32,7 @@ def animate_UAV_FLPO(
     ax.scatter(
         start_locs[:, 0],
         start_locs[:, 1],
-        color="black",
+        color="cyan",
         marker="o",
         alpha=0.5,
         label="S",
@@ -40,8 +40,8 @@ def animate_UAV_FLPO(
     ax.scatter(end_locs[:, 0], end_locs[:, 1], color="red", marker="*", label="E")
 
     # Initialize facility scatter plot (to be updated in animation)
-    f_scatter = ax.scatter([], [], color="blue", marker="^", label="F")
-    ax.legend(facecolor=facecolor, edgecolor=edgecolor, loc = 'upper left')
+    f_scatter = ax.scatter([], [], color="gray", marker="^", label="F")
+    # ax.legend(facecolor=facecolor, edgecolor=edgecolor, loc = 'upper left')
     ax.axis("off")
 
     # Set axis limits based on all data
