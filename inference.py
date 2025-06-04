@@ -1,7 +1,7 @@
 import torch
 from BeamSearch import beam_search
 from RelevanceMaskGenerator import RelevanceMaskGenerator
-def inference(data , model, method = 'BeamSearch'):
+def inference(data , model, method = 'Greedy'):
 
     num_data , num_cities , _ = data.shape
     device = data.device
