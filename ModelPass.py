@@ -12,7 +12,7 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
     s = time.time()
     torch.cuda.empty_cache()
     with torch.no_grad():
-        if num_facilities < 50:
+        if num_facilities < 50 and num_drones < 50:
             _, actions = utils.generate_true_labels(data, 1e8)
             
             actions = torch.tensor(actions).unsqueeze(-1)
