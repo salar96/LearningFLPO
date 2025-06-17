@@ -8,6 +8,7 @@ from scipy.optimize import LinearConstraint
 from scipy.special import *
 import cvxpy as cp
 
+
 class FLPO():
 
     def __init__(self, filename:str, plotFLPO:bool, disType:str, selfHop:bool):
@@ -26,7 +27,7 @@ class FLPO():
         self.selfHop = selfHop
         self.stageHorizon = self.f+1
         self.bounds = [(0,self.scale)]*self.f*2
-        self.MY_INF = 10*self.scale
+        self.MY_INF = 1e8*self.scale
         self.nPaths = self.return_n_paths()
 
         if plotFLPO == True:
@@ -34,13 +35,15 @@ class FLPO():
 
 
     def plotFLPO(self):
+        plt.figure(figsize=(4,3))
         plt.scatter(self.nodeLocations[:,0],self.nodeLocations[:,1],marker='o', alpha=0.2, label='nodes: '+str(self.n))
         # for facs in facilityLocations:
         #     plt.scatter(facs[:,0],facs[:,1],marker='v')
         plt.scatter(self.facilityLocations[:,0], self.facilityLocations[:,1], marker='v', label='facilities: '+ str(self.f))
+        # plt.scatter(self.external_facilityLocations[:,0], self.external_facilityLocations[:,1], marker='d', label='ext_facilities: '+ str(self.f))
         plt.scatter(self.destinationLocation[:,0],self.destinationLocation[:,1], marker='D', label='destination: '+ str(np.round(self.destinationLocation.squeeze(), 2)))
         plt.grid()
-        plt.legend()
+        # plt.legend()
         # legend = ['nodes: '+ str(self.n), 'facilities: ' + str(self.f), 'destination: ' + str(np.round(self.destinationLocation.squeeze(), 2))]
         # plt.legend(legend)
         plt.show()

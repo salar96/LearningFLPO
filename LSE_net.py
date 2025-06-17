@@ -1,5 +1,6 @@
 import torch 
 import torch.nn as nn 
+import torch.nn.init as init
 import torch.optim as optim
 import numpy as np
 import time
@@ -19,13 +20,27 @@ class dnn(nn.Module):
         # create input, hidden and output layers with ReLU activation
         self.layers = nn.ModuleList()
         self.layers.append(nn.Linear(n_inputs, layers[0]))
+        # nn.Dropout(p=0.1)
         for i, l in enumerate(layers):
             self.layers.append(nn.ReLU())
             if i < len(layers)-1:
                 self.layers.append(nn.Linear(layers[i], layers[i+1]))
+                nn.Dropout(p=0.1)
         self.layers.append(nn.Linear(layers[-1], n_outputs))
+        # nn.Dropout(p=0.1)
+        # self.layers.append(nn.ReLU())
+
+        # Initialize weights and biases
+        for layer in self.layers:
+            if isinstance(layer, nn.Linear):
+                init.kaiming_normal_(layer.weight, nonlinearity='relu')
+                # init.zeros_(layer.weight)
+                if layer.bias is not None:
+                    init.zeros_(layer.bias)
 
     def forward(self, x):
+        # x = torch.cat((x[:,:2], 10**x[:,2].view(-1,1)), axis=1)
+        # y = x
         for layer in self.layers:
             x = layer(x)
         return x
@@ -75,6 +90,14 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
     for ep in range(epochs):
         j = 0
         epoch_trainLoss1 = 0
+        if shuffledata:
+            # shuffle training data
+            indices = torch.randperm(X.size(0))
+            X_shuffled = X[indices]
+            Y_shuffled = Y[indices]
+        else:
+            X_shuffled = X
+            Y_shuffled = Y    
 
         tStartEp = time.time()
         # update neural net parameters by batchwise training per epoch
@@ -82,26 +105,20 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
             # set training mode
             dnn.train(True) #(optional)
             # compute necessary data
-            if j+batch_size >= len(X):
-                j_batch_end = len(X)
+            if j+batch_size >= len(X_shuffled):
+                j_batch_end = len(X_shuffled)
             else:
                 j_batch_end = j+batch_size
 
             # predictions and targets
-            x_train = X[j:j+j_batch_end,:]
-            y_target = Y[j:j+j_batch_end,:]
+            x_train = X_shuffled[j:j+j_batch_end,:]
+            y_target = Y_shuffled[j:j+j_batch_end,:]
             y_pred = dnn(x_train)
 
             # loss computations
             loss = loss_fn(y_pred, y_target)
-            # term_loss = (y_target[-1] - y_pred[-1])**2
-            # accuracy = torch.abs((y_pred.detach()-y_target))/torch.abs(y_target)
-            # l1_reg = torch.tensor(0.)
-            # for param in agent_nn.parameters():
-            #     l1_reg += torch.sum(torch.abs(param))
-            # l1_loss = l1_lambda*l1_reg
-            # final loss
             total_loss = coeff[0]*loss #+ coeff[1]*term_loss
+
             # backpropagation and optimization step
             optimizer.zero_grad()
             total_loss.backward()
@@ -121,7 +138,7 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
         tEp = tEnd_ep - tStartEp
 
         # update epoch training loss
-        training_loss[ep] = epoch_trainLoss1 #/n_batches
+        training_loss[ep] = epoch_trainLoss1#/n_batches
 
         # Update learning rate every epoch
         current_lr = optimizer.param_groups[0]['lr']
@@ -134,12 +151,12 @@ def train_nn1(dnn:dnn, X:torch.tensor, Y:torch.tensor, loss_fn, optimizer, sched
             # l1Loss0 = training_loss[ep,3]
             if allowPrint == True:
                 print('\n---------------------------------')
-                print(f'epoch: {ep}/{epochs}, \t loss: {loss0:.3f} \t rel:{1000:.1f}, \t time: {tEp:.2f}')
+                print(f'epoch: {ep}/{epochs}, \t loss: {loss0:.3f} \t rel:{1000:.3e}, \t time: {tEp:.2f}')
         if (ep+10)%1 == 0:
             loss = training_loss[ep]
             relLoss = loss/loss0*1000
             if allowPrint == True:
-                print(f'epoch: {ep+1}/{epochs}, \t loss: {loss:.3f} \t rel:{relLoss:.1f}, \t time: {tEp:.2f}')
+                print(f'epoch: {ep+1}/{epochs}, \t loss: {loss:.3f} \t rel:{relLoss:.3e}, \t time: {tEp:.2f}')
             if ep<epochs-1 and relLoss <= 1e-12:
                 if allowPrint==True:
                     print(f'---------------------------------')
