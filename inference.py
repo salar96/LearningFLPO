@@ -1,6 +1,7 @@
 import torch
 from BeamSearch import beam_search
 from RelevanceMaskGenerator import RelevanceMaskGenerator
+
 def inference(data , model, method = 'Greedy'):
 
     num_data , num_cities , _ = data.shape
@@ -28,7 +29,6 @@ def inference(data , model, method = 'Greedy'):
         P_s = torch.zeros(num_data, num_cities, num_cities).to(device)
         E = model.encoder(data)
         for t in range(1, num_cities):
-            
             prev_chosen_indices = actions[:,t-1,0].unsqueeze(1).long()
             with torch.no_grad():
                 m1 = torch.zeros(num_data, num_cities, dtype=bool).to(device)
@@ -40,7 +40,16 @@ def inference(data , model, method = 'Greedy'):
                 a  = torch.multinomial(outs, num_samples=1).squeeze(-1)
                 actions[:, t, 0] = a
             P_s[:, t, :] = outs
+    elif method == "free_sampling":
+        actions = torch.zeros(num_data, num_cities, 1).to(device)
+        P_s = torch.ones(num_data, num_cities, num_cities).to(device)
+        P_s[:, :, 0] = 0.0 # coming back to start is prohibited
+        P_s[:, -1, :-1] = 0.0 # only destination to destination
+        P_s = P_s/torch.sum(P_s, axis=-1, keepdims=True) # normalization
+        for t in range(1, num_cities):
+            a = torch.multinomial(P_s[:, t, :], num_samples=1).squeeze(-1)
+            actions[:, t, 0] = a
     else:
         raise "Wrong Method!"
     
-    return P_s , actions
+    return P_s, actions

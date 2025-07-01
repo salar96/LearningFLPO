@@ -75,3 +75,35 @@ def LSENet_pass(lse_net, D_min_drones, D_max_range, beta, beta_min, returnGrad=F
     else:
         dFreeE_dDmin = None
     return FreeEnergy, dFreeE_dDmin
+
+# should output a path cost for each drone sampled at random
+def sampling_pass(F_base, S, E, n_samples, returnGrad=False):
+    num_drones = S.shape[0]
+    num_facilities = F_base.shape[1]
+    F_locs = F_base.expand(num_drones, -1, -1)  # view, shares grad with F_base
+    data = torch.cat((S, F_locs, E), dim=1)  # shape: (Nd, Nf+2, D)
+    D_samples = torch.zeros((n_samples, num_drones, 1))
+    GD_samples = torch.zeros((n_samples, num_drones, num_facilities, F_base.shape[-1]))
+    
+    for i in range(n_samples):
+        with torch.no_grad():
+            _, actions = inference(data, model=None, method="free_sampling")
+
+        D_drones = utils.route_cost(data, actions).view(-1, 1)
+
+        if returnGrad:
+            # grad D_mins w.r.t. F_locs: shape = num_drones x num_facilities x dim_facility
+            grad_outputs = torch.ones_like(D_drones)
+            gradient = torch.autograd.grad(
+                outputs=D_drones,
+                inputs=F_locs,
+                grad_outputs=grad_outputs,
+            )
+            dD_dFlocs = gradient[0]
+        else:
+            dD_dFlocs = None
+        
+        D_samples[i] = D_drones
+        GD_samples[i] = dD_dFlocs
+
+    return D_samples, GD_samples
