@@ -3,7 +3,6 @@ from ModelPass import *
 
 
 def gradient_descent_step(Y, dY, eta):
-
     return Y - eta * dY
 
 
@@ -180,3 +179,72 @@ def Adam_at_beta(
         return Y_arr, freeEnergy, G
     else:
         return F_base, freeEnergy, G
+
+
+def sampling_GD_at_beta(
+    F_base,
+    S,
+    E,
+    vrp_net,
+    n_path_samples,
+    beta,
+    stepsize,
+    iters,
+    tol=1e-3,
+    allowPrint=False
+    ):
+    assert F_base.requires_grad == True
+
+    num_drones = S.shape[0]
+    num_facilities = F_base.shape[1]
+    dim_ = F_base.shape[2]
+    print(f'n_drones:{num_drones}\tnum_facilities:{num_facilities}\tdim_:{dim_}')
+
+    for i in range(iters):
+
+        D_mins, GD_mins, _ = VRPNet_pass(
+            vrp_net, 
+            F_base, 
+            S, 
+            E,
+            method="Greedy",
+            returnGrad=True)
+
+        D_samples, GD_samples = sampling_pass(
+            F_base, 
+            S, 
+            E, 
+            n_path_samples, 
+            returnGrad=True)
+
+        # compute a gibbs distribution on all the paths (shortest and sampled)
+        D_cat = torch.cat((D_mins, D_samples.squeeze().T),axis=1)
+        D_min = torch.min(D_cat, axis=1, keepdims=True).values
+        D_off = D_cat - D_min
+        D_exp = torch.exp(-beta * D_off)
+        sumD_exp = torch.sum(D_exp, axis=1, keepdims=True)
+        gibbs = D_exp/sumD_exp
+
+        # compute net gradient using samples
+        GD_mins_reshaped = GD_mins.reshape(1,num_drones,num_facilities,dim_)
+        # print(GD_mins_reshaped.shape)
+        # print(GD_samples.shape)
+        Grads = torch.cat((GD_mins.reshape(1,num_drones,num_facilities,dim_), GD_samples), axis=0) # n_samples x n_drones x n_facilities x dim_
+        reshape_gibbs = gibbs.T.reshape(n_path_samples+1, num_drones, 1, 1) # n_samples x n_drones x 1 x 1
+        G = torch.sum(reshape_gibbs * Grads, axis=0) # resulting shape: n_drones x n_facilities x dim_
+
+        # stopping criteria
+        Norm_G = torch.norm(G).item()
+        if Norm_G < tol:
+            if allowPrint:
+                print(f'Optimization terminated due to tol at iteration: {i} NormG: {NormG:.4e}')
+            break
+
+        # optimizer step
+        F_base = gradient_descent_step(F_base, G, stepsize)
+
+        # print data
+        if allowPrint:
+            print(f"iter: {i}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
+
+    return F_base, G
