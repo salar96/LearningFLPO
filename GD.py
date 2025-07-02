@@ -201,7 +201,8 @@ def sampling_GD_at_beta(
     print(f'n_drones:{num_drones}\tnum_facilities:{num_facilities}\tdim_:{dim_}')
 
     for i in range(iters):
-
+        
+        # get the shortest paths
         D_mins, GD_mins, _ = VRPNet_pass(
             vrp_net, 
             F_base, 
@@ -210,6 +211,7 @@ def sampling_GD_at_beta(
             method="Greedy",
             returnGrad=True)
 
+        # sample some paths using a stagewise uniform distribution
         D_samples, GD_samples = sampling_pass(
             F_base, 
             S, 
@@ -224,20 +226,19 @@ def sampling_GD_at_beta(
         D_exp = torch.exp(-beta * D_off)
         sumD_exp = torch.sum(D_exp, axis=1, keepdims=True)
         gibbs = D_exp/sumD_exp
+        freeEnergy = torch.mean(-1/beta * torch.log(sumD_exp) + D_min)
 
         # compute net gradient using samples
         GD_mins_reshaped = GD_mins.reshape(1,num_drones,num_facilities,dim_)
-        # print(GD_mins_reshaped.shape)
-        # print(GD_samples.shape)
         Grads = torch.cat((GD_mins.reshape(1,num_drones,num_facilities,dim_), GD_samples), axis=0) # n_samples x n_drones x n_facilities x dim_
         reshape_gibbs = gibbs.T.reshape(n_path_samples+1, num_drones, 1, 1) # n_samples x n_drones x 1 x 1
-        G = torch.sum(reshape_gibbs * Grads, axis=0) # resulting shape: n_drones x n_facilities x dim_
+        G = torch.mean(torch.sum(reshape_gibbs * Grads, axis=0),axis=0, keepdims=True) # resulting shape: n_drones x n_facilities x dim_
 
         # stopping criteria
         Norm_G = torch.norm(G).item()
         if Norm_G < tol:
             if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} NormG: {NormG:.4e}')
+                print(f'Optimization terminated due to tol at iteration: {i} freeE:{freeEnergy:.3f} NormG: {NormG:.4e}')
             break
 
         # optimizer step
@@ -245,6 +246,6 @@ def sampling_GD_at_beta(
 
         # print data
         if allowPrint:
-            print(f"iter: {i}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
+            print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
 
-    return F_base, G
+    return F_base, freeEnergy, G

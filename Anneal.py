@@ -77,6 +77,20 @@ def anneal(
                 return_list = False
             )
 
+        elif optimizer_name == "sampling_gradient_descent":
+            F_base, FreeEnergy, G = GD.sampling_GD_at_beta(
+                F_base,
+                S,
+                E,
+                vrp_net,
+                n_path_samples=10,
+                beta=beta,
+                stepsize=0.1,
+                iters=100,
+                tol=1e-3,
+                allowPrint=False
+                )            
+
         # store data
         Y_arr.append(F_base.clone().detach())
         b_arr.append(beta)

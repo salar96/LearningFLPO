@@ -19,7 +19,7 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
         else:
             _, actions = inference(data, vrp_net, method)  # For large networks we use SPN
         e = time.time()-s
-        print("time elapsed: " , e)
+        # print("time elapsed: " , e)
         
     D_min_drones = utils.route_cost(data, actions).view(-1, 1)
 
