@@ -187,16 +187,14 @@ def sampling_GD_at_beta(
     E,
     vrp_net,
     n_path_samples,
-    iters,
-    stepsize,
     beta,
+    stepsize,
+    iters,
     tol=1e-3,
-    allowPrint=False,
-    return_list = False
+    allowPrint=False
     ):
     assert F_base.requires_grad == True
-    if return_list:
-        Y_arr = [F_base.clone().detach()]
+
     num_drones = S.shape[0]
     num_facilities = F_base.shape[1]
     dim_ = F_base.shape[2]
@@ -213,8 +211,8 @@ def sampling_GD_at_beta(
             method="Greedy",
             returnGrad=True)
 
-        # sample some paths using a stagewise uniform distribution
-        D_samples, GD_samples = sampling_pass(
+        # sample some paths using a stagewise uniform distribution 
+        D_samples, GD_samples = sampling_pass( 
             F_base, 
             S, 
             E, 
@@ -245,13 +243,9 @@ def sampling_GD_at_beta(
 
         # optimizer step
         F_base = gradient_descent_step(F_base, G, stepsize)
-        if return_list:
-            Y_arr.append(F_base.clone().detach())
+
         # print data
         if allowPrint:
             print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
 
-    if return_list:
-        return Y_arr, freeEnergy, G
-    else:
-        return F_base, freeEnergy, G
+    return F_base, freeEnergy, G
