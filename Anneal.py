@@ -16,8 +16,8 @@ def anneal(
     D_max_range,
     tol,
     optimizer_name,
-    allowPrint,
-    
+    n_path_samples,
+    allowPrint   
 ):
 
     beta = beta_min
@@ -83,11 +83,11 @@ def anneal(
                 S,
                 E,
                 vrp_net,
-                n_path_samples=10,
+                n_path_samples=n_path_samples,
                 beta=beta,
-                stepsize=0.1,
-                iters=100,
-                tol=1e-3,
+                stepsize=optim_step,
+                iters=optim_iters,
+                tol=tol,
                 allowPrint=False
                 )            
 
