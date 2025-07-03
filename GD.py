@@ -187,14 +187,16 @@ def sampling_GD_at_beta(
     E,
     vrp_net,
     n_path_samples,
-    beta,
-    stepsize,
     iters,
+    stepsize,
+    beta,
     tol=1e-3,
-    allowPrint=False
+    allowPrint=False,
+    return_list = False
     ):
     assert F_base.requires_grad == True
-
+    if return_list:
+        Y_arr = [F_base.clone().detach()]
     num_drones = S.shape[0]
     num_facilities = F_base.shape[1]
     dim_ = F_base.shape[2]
@@ -238,14 +240,18 @@ def sampling_GD_at_beta(
         Norm_G = torch.norm(G).item()
         if Norm_G < tol:
             if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} freeE:{freeEnergy:.3f} NormG: {NormG:.4e}')
+                print(f'Optimization terminated due to tol at iteration: {i} freeE:{freeEnergy:.3f} NormG: {Norm_G:.4e}')
             break
 
         # optimizer step
         F_base = gradient_descent_step(F_base, G, stepsize)
-
+        if return_list:
+            Y_arr.append(F_base.clone().detach())
         # print data
         if allowPrint:
             print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
 
-    return F_base, freeEnergy, G
+    if return_list:
+        return Y_arr, freeEnergy, G
+    else:
+        return F_base, freeEnergy, G
