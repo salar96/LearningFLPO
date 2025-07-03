@@ -78,12 +78,13 @@ def LSENet_pass(lse_net, D_min_drones, D_max_range, beta, beta_min, returnGrad=F
 
 # should output a path cost for each drone sampled at random
 def sampling_pass(F_base, S, E, n_samples, returnGrad=False):
+    device = F_base.device
     num_drones = S.shape[0]
     num_facilities = F_base.shape[1]
     F_locs = F_base.expand(num_drones, -1, -1)  # view, shares grad with F_base
     data = torch.cat((S, F_locs, E), dim=1)  # shape: (Nd, Nf+2, D)
-    D_samples = torch.zeros((n_samples, num_drones, 1))
-    GD_samples = torch.zeros((n_samples, num_drones, num_facilities, F_base.shape[-1]))
+    D_samples = torch.zeros((n_samples, num_drones, 1)).to(device)
+    GD_samples = torch.zeros((n_samples, num_drones, num_facilities, F_base.shape[-1])).to(device)
     
     for i in range(n_samples):
         with torch.no_grad():
