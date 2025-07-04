@@ -273,22 +273,22 @@ def sampling_GD_at_beta_auto_diff(
     for i in range(iters):
         
         # get the shortest paths
-        D_mins, _, _ = VRPNet_pass(
+        D_mins, _, _ = VRPNet_pass( 
             vrp_net, 
             F_base, 
             S, 
-            E,
-            method="BeamSearch",
+            E, 
+            method="BeamSearch", 
             returnGrad=False)
-        print(f'D_mins shape: {D_mins.shape}')
+        print(f'D_mins shape: {D_mins.shape}') 
         # sample some paths using a stagewise uniform distribution 
         D_samples, _ = sampling_pass( 
             F_base, 
             S, 
             E, 
             n_path_samples, 
-            returnGrad=False)
-        print(f'D_samples shape: {D_samples.shape}')
+            returnGrad=False) 
+        print(f'D_samples shape: {D_samples.shape}') 
         # compute a gibbs distribution on all the paths (shortest and sampled)
         D_cat = torch.cat((D_mins, D_samples.squeeze().T),axis=1)
         D_min = torch.min(D_cat, axis=1, keepdims=True).values
@@ -310,7 +310,7 @@ def sampling_GD_at_beta_auto_diff(
             if allowPrint:
                 print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
             break
-        # optimizer step
+        # optimizer step 
         optimizer.step()
 
         # print data
