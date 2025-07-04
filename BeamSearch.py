@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.utils.rnn import pad_sequence
+from RelevanceMaskGenerator import RelevanceMaskGenerator
 
 def beam_search(model: nn.Module,
                 data: torch.Tensor,
@@ -8,71 +9,158 @@ def beam_search(model: nn.Module,
                 start_idx: int = 0,
                 device: torch.device = None):
     """
-    Efficient beam search decoding for a Transformer-like model.
-
-    Args:
-        model (nn.Module): Model with encoder and decoder methods.
-        data (torch.Tensor): Input tensor of shape (B, N, d).
-        beam_width (int): Beam size.
-        start_idx (int): Start token index.
-        device (torch.device): Computation device.
-
-    Returns:
-        torch.LongTensor: Shape (B, beam_width, N), decoded sequences.
-        torch.FloatTensor: Shape (B, beam_width), log-prob scores.
+    Batched beam search with visited city tracking and relevance masking.
     """
     model.eval()
     B, N, _ = data.size()
     if device is None:
         device = data.device
 
+    data = data.to(device)
     with torch.no_grad():
-        E = model.encoder(data.to(device))  # (B, N, d)
+        memory = model.encoder(data)  # (B, N, d)
 
-    all_seqs = []
-    all_scores = []
+    # Initial state
+    sequences = torch.full((B, 1, 1), start_idx, dtype=torch.long, device=device)  # (B, 1, 1)
+    scores = torch.zeros(B, 1, device=device)
+    visited = torch.zeros(B, 1, N, dtype=torch.bool, device=device)
+    visited[:, :, start_idx] = True  # mark start as visited
 
-    for b in range(B):
-        E_b = E[b:b+1]  # (1, N, d)
+    for t in range(1, N):
+        beam_size = sequences.size(1)
 
-        beams = [([start_idx], 0.0)]  # (sequence list, cumulative log-prob)
+        flat_seqs = sequences.view(B * beam_size, -1)  # (B*beam, t)
+        prev_city = flat_seqs[:, -1].unsqueeze(1)  # (B*beam, 1)
 
-        for _ in range(N - 1):
-            beam_seqs = [torch.tensor(seq, dtype=torch.long) for seq, _ in beams]
-            beam_input = pad_sequence(beam_seqs, batch_first=True).to(device)  # (beam_width, t)
+        memory_exp = memory.unsqueeze(1).expand(-1, beam_size, -1, -1).reshape(B * beam_size, N, -1)
+        data_exp = data.unsqueeze(1).expand(-1, beam_size, -1, -1).reshape(B * beam_size, N, -1)
 
-            # Expand encoder memory for each beam
-            E_b_exp = E_b.expand(len(beams), -1, -1)  # (beam_width, N, d)
-            _, probs = model.decoder(E_b_exp, beam_input)  # (beam_width, N)
-            log_probs = torch.log(probs)  # (beam_width, N)
+        # Visited mask: (B*beam, N)
+        visited_flat = visited.view(B * beam_size, N)
 
-            candidates = []
-            for i, (seq, score) in enumerate(beams):
-                topk_lp, topk_idx = torch.topk(log_probs[i], beam_width)
-                for lp, idx in zip(topk_lp, topk_idx):
-                    new_seq = seq + [idx.item()]
-                    new_score = score + lp.item()
-                    candidates.append((new_seq, new_score))
+        # Relevance mask: (B*beam, N)
+        m2 = RelevanceMaskGenerator(data_exp, prev_city)
+        mask = visited_flat | m2  # Combined mask
 
-            # Prune to top beams
-            beams = sorted(candidates, key=lambda x: x[1], reverse=True)[:beam_width]
+        _, logits = model.decoder(memory_exp, prev_city, relevance_mask=mask)
+        log_probs = torch.log(logits + 1e-9)
 
-        # Final beam results for this batch
-        seqs = [seq for seq, _ in beams]
-        scores = [score for _, score in beams]
-        all_seqs.append(seqs)
-        all_scores.append(scores)
+        log_probs = log_probs.view(B, beam_size, N)
+        total_scores = scores.unsqueeze(-1) + log_probs  # (B, beam, N)
 
-    seq_tensor = torch.tensor(all_seqs, dtype=torch.long, device=device)  # (B, beam_width, N)
-    score_tensor = torch.tensor(all_scores, dtype=torch.float, device=device)  # (B, beam_width)
+        total_scores_flat = total_scores.view(B, -1)
+        topk_scores, topk_indices = torch.topk(total_scores_flat, beam_width, dim=-1)
 
-    return seq_tensor, score_tensor
+        beam_idx = topk_indices // N
+        city_idx = topk_indices % N
+
+        batch_idx = torch.arange(B, device=device).unsqueeze(1)
+        selected_seqs = sequences[batch_idx, beam_idx]
+        new_seqs = torch.cat([selected_seqs, city_idx.unsqueeze(-1)], dim=-1)
+
+        sequences = new_seqs
+        scores = topk_scores
+
+        selected_visited = visited[batch_idx, beam_idx]  # (B, beam, N)
+        updated_visited = selected_visited.clone()
+        updated_visited.scatter_(2, city_idx.unsqueeze(-1), True)
+        visited = updated_visited
+
+    return sequences, scores
 
 
 if __name__ == "__main__":
     from VRP_Net_L import VRPNet_L
-    data = torch.rand(10,5,2)
-    model = VRPNet_L(2,64,'cpu',1,1,8,0.3,False)
-    seq, scores = beam_search(model,data,beam_width=5)
-    print(scores)
+    from utils import route_cost, load_model
+    from inference import inference
+    from matplotlib import pyplot as plt
+    from pathlib import Path
+    seed=1;
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    device = torch.device('cpu')
+    print("Running on: " , device)
+    data = torch.rand(1,50,2)
+    torch.cuda.empty_cache()
+    model_classes = {"VRPNet_L": VRPNet_L}
+    weights_address = (
+        Path("Saved_models") /
+        "VRPNet_L_lr1e-04_bs32_ep60000_samples1920000_cities50_inputdim2_"
+        "workers0_hidden64_enc1_dec1_heads8_dropout0.30_"
+        "train_PO_2025_05_17_22_43_32last_model.pth"
+    )
+    vrp_net = load_model(
+        weights_address, model_classes, weights_only=True, device=device
+    )
+    seq, scores = beam_search(vrp_net,data,beam_width=10)
+ 
+    [print(route_cost(data, seq[:,i,:])) for i in range(seq.shape[1])]
+    
+    # def plot_routes(cities, routes):
+    #     for batch_index in torch.arange(len(cities)):
+    #         # Extract the specific batch
+    #         cities_batch = cities[batch_index].numpy()
+    #         route_batch = routes[batch_index].long().squeeze().numpy()
+    #         # Get coordinates of cities in the order of the route
+    #         ordered_cities = cities_batch[route_batch]
+    #         # Plot cities
+    #         plt.figure(figsize=(8, 6))
+    #         plt.scatter(
+    #             cities_batch[1:-1, 0],
+    #             cities_batch[1:-1, 1],
+    #             marker=".",
+    #             color="blue",
+    #             zorder=2,
+    #             label="Cities",
+    #         )
+     
+    #         plt.plot(
+    #             ordered_cities[:, 0],
+    #             ordered_cities[:, 1],
+    #             color="red",
+    #             linestyle="-",
+    #             zorder=1,
+    #             label="Route",
+    #         )
+
+    #         # Highlight start and end points
+    #         plt.scatter(
+    #             cities_batch[0, 0],
+    #             cities_batch[0, 1],
+    #             color="green",
+    #             s=50,
+    #             label="Start",
+    #             zorder=3,
+    #         )
+    #         plt.scatter(
+    #             cities_batch[-1, 0],
+    #             cities_batch[-1, 1],
+    #             marker="^",
+    #             color="red",
+    #             s=50,
+    #             label="End",
+    #             zorder=3,
+    #         )
+    #         model_cost = route_cost(
+    #             cities[batch_index : batch_index + 1], routes[batch_index : batch_index + 1]
+    #         )[
+    #             0
+    #         ]  # /straight_costs(cities[batch_index:batch_index+1])[0]
+            
+    #         plt.title(
+    #             f"Batch {batch_index} cost: {model_cost:.2f}"
+    #         )
+
+    #         plt.xlabel("X Coordinate")
+    #         plt.ylabel("Y Coordinate")
+    #         plt.axis("off")
+    #         plt.show()
+    #         # Save the plot to the specified folder
+    # plot_routes(data, actions)
+            
+       
+
+
+
     
