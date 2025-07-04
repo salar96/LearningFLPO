@@ -149,7 +149,7 @@ def Adam_at_beta(
     for i in range(iters):
 
         D_min_drones, _, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="sampling", returnGrad=False
+            vrp_net, F_base, S, E, method="BeamSearch", returnGrad=False
         )
         freeEnergy_drones, _ = LSENet_pass(
             lse_net, D_min_drones, D_max_range=D_max_range, beta=beta, beta_min=beta_min
@@ -243,6 +243,75 @@ def sampling_GD_at_beta(
 
         # optimizer step
         F_base = gradient_descent_step(F_base, G, stepsize)
+
+        # print data
+        if allowPrint:
+            print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
+
+    return F_base, freeEnergy, G
+
+
+def sampling_GD_at_beta_auto_diff(
+    F_base,
+    S,
+    E,
+    vrp_net,
+    n_path_samples,
+    beta,
+    stepsize,
+    iters,
+    tol=1e-3,
+    allowPrint=False
+    ):
+    assert F_base.requires_grad == True
+    optimizer = torch.optim.Adam([F_base], lr=stepsize)
+    num_drones = S.shape[0]
+    num_facilities = F_base.shape[1]
+    dim_ = F_base.shape[2]
+    print(f'n_drones:{num_drones}\tnum_facilities:{num_facilities}\tdim_:{dim_}')
+
+    for i in range(iters):
+        
+        # get the shortest paths
+        D_mins, _, _ = VRPNet_pass(
+            vrp_net, 
+            F_base, 
+            S, 
+            E,
+            method="BeamSearch",
+            returnGrad=False)
+        print(f'D_mins shape: {D_mins.shape}')
+        # sample some paths using a stagewise uniform distribution 
+        D_samples, _ = sampling_pass( 
+            F_base, 
+            S, 
+            E, 
+            n_path_samples, 
+            returnGrad=False)
+        print(f'D_samples shape: {D_samples.shape}')
+        # compute a gibbs distribution on all the paths (shortest and sampled)
+        D_cat = torch.cat((D_mins, D_samples.squeeze().T),axis=1)
+        D_min = torch.min(D_cat, axis=1, keepdims=True).values
+        D_off = D_cat - D_min
+        D_exp = torch.exp(-beta * D_off)
+        sumD_exp = torch.sum(D_exp, axis=1, keepdims=True)
+        gibbs = D_exp/sumD_exp
+        freeEnergy = torch.mean(-1/beta * torch.log(sumD_exp) + D_min)
+
+        torch.cuda.empty_cache()
+
+        # compute gradient of free energy wrt F_base using backpropagation
+        optimizer.zero_grad()
+        freeEnergy.backward()
+        G = F_base.grad
+        with torch.no_grad():
+            Norm_G = torch.norm(G).item()
+        if Norm_G < tol:
+            if allowPrint:
+                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
+            break
+        # optimizer step
+        optimizer.step()
 
         # print data
         if allowPrint:

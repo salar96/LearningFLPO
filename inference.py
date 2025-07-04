@@ -22,8 +22,8 @@ def inference(data , model, method = 'Greedy'):
             actions[:, t, 0] = torch.argmax(outs, dim=-1)
             
     elif method == 'BeamSearch':
-        seq, scores = beam_search(model,data,beam_width=5)
-        actions = seq[:,0,:]
+        actions, scores = beam_search(model,data,beam_width=5)
+       
     elif method == "sampling":
         actions = torch.zeros(num_data, num_cities, 1).to(device)
         P_s = torch.zeros(num_data, num_cities, num_cities).to(device)

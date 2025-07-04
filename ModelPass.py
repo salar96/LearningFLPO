@@ -20,8 +20,13 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
             _, actions = inference(data, vrp_net, method)  # For large networks we use SPN
         e = time.time()-s
         # print("time elapsed: " , e)
+
+    if method == "BeamSearch":
         
-    D_min_drones = utils.route_cost(data, actions).view(-1, 1)
+        costs = [utils.route_cost(data, actions[:, i, :]).unsqueeze(1) for i in range(actions.shape[1])]
+        D_min_drones = torch.cat(costs,dim=1)
+    else:
+        D_min_drones = utils.route_cost(data, actions).view(-1, 1)
 
     if returnGrad:
         # grad D_mins w.r.t. F_locs: shape = num_drones x num_facilities x dim_facility
@@ -101,10 +106,11 @@ def sampling_pass(F_base, S, E, n_samples, returnGrad=False):
                 grad_outputs=grad_outputs,
             )
             dD_dFlocs = gradient[0]
+            GD_samples[i] = dD_dFlocs
         else:
             dD_dFlocs = None
         
         D_samples[i] = D_drones
-        GD_samples[i] = dD_dFlocs
+        
 
     return D_samples, GD_samples
