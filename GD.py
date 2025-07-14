@@ -198,7 +198,7 @@ def sampling_GD_at_beta(
     num_drones = S.shape[0]
     num_facilities = F_base.shape[1]
     dim_ = F_base.shape[2]
-    print(f'n_drones:{num_drones}\tnum_facilities:{num_facilities}\tdim_:{dim_}')
+    # print(f'n_drones:{num_drones}\tnum_facilities:{num_facilities}\tdim_:{dim_}')
 
     for i in range(iters):
         
@@ -218,9 +218,9 @@ def sampling_GD_at_beta(
             E, 
             n_path_samples, 
             returnGrad=True)
-
+        D_samples_reshaped = D_samples.squeeze(-1).transpose(0,1)
         # compute a gibbs distribution on all the paths (shortest and sampled)
-        D_cat = torch.cat((D_mins, D_samples.squeeze().T),axis=1)
+        D_cat = torch.cat((D_mins, D_samples.squeeze(-1).transpose(0,1)),axis=1)
         D_min = torch.min(D_cat, axis=1, keepdims=True).values
         D_off = D_cat - D_min
         D_exp = torch.exp(-beta * D_off)

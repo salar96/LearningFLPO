@@ -79,24 +79,26 @@ def generate_dataset(
     assert START_locs.requires_grad == False
     assert END_locs.requires_grad == False
 
-    print("Data Created.")
+    # print("Data Created.")
 
     return START_locs, F_base, END_locs
 
-def torchFLPO_2_numpyFLPO(START_locs, END_locs, F_base, file_dir, scale):
+def torchFLPO_2_numpyFLPO(START_locs, END_locs, F_base, dim_, scale):
 
-    node_locations = START_locs.cpu().numpy().squeeze()
-    destination_location = END_locs[0].cpu().numpy()
+    node_locations = START_locs.cpu().numpy().reshape(-1,dim_)
+    destination_location = END_locs[0].cpu().numpy().reshape(-1,dim_)
     facility_location = F_base.detach().cpu().numpy().squeeze()
 
-    numpyFLPOdata = {}
-    numpyFLPOdata['nodeLocations'] = node_locations
-    numpyFLPOdata['destinationLocation'] = destination_location
-    numpyFLPOdata['facilityLocations'] = facility_location
-    numpyFLPOdata['numFacilities'] = facility_location.shape[0]
-    numpyFLPOdata['numNodes'] = node_locations.shape[0]
-    numpyFLPOdata['scale'] = scale
+    # numpyFLPOdata = {}
+    # numpyFLPOdata['nodeLocations'] = node_locations
+    # numpyFLPOdata['destinationLocation'] = destination_location
+    # numpyFLPOdata['facilityLocations'] = facility_location
+    # numpyFLPOdata['numFacilities'] = facility_location.shape[0]
+    # numpyFLPOdata['numNodes'] = node_locations.shape[0]
+    # numpyFLPOdata['scale'] = scale
 
-    with open(file_dir, 'wb') as file:
-        pickle.dump(numpyFLPOdata, file)
+    # with open(file_dir, 'wb') as file:
+    #     pickle.dump(numpyFLPOdata, file)
+
+    return node_locations, facility_location, destination_location
 

@@ -23,7 +23,7 @@ class FLPO():
         self.stageHorizon = self.f+1
         self.bounds = [(0,self.scale)]*self.f*2
         self.MY_INF = 1e15*self.scale
-        self.nPaths = self.return_n_paths()
+        # self.nPaths = self.return_n_paths()
 
         # if plotFLPO == True:
         #     self.plotFLPO()
@@ -220,7 +220,7 @@ class FLPO():
 
         freeEnergy = np.sum(V_flip[K-1])/self.n
 
-        return Lambda_flip[::-1], V_flip[::-1], freeEnergy, tf-t0, p_flip[::-1][:-1]
+        return Lambda_flip[::-1], V_flip[::-1], freeEnergy, tf-t0, p_flip[::-1]
     
 
     def backPropDP_grad(self, GD_s, P):
@@ -231,12 +231,14 @@ class FLPO():
         P_flip = P[::-1]
 
         for i in range(K):
+            tic = time.time()
             if i == 0:
                 GV_flip[i] = GD_flip[i]
             else:
+                # GV_flip[i] = np.sum(P_flip[i] * GD_flip[i], axis=2, keepdims=True) + P_flip[i] @ GV_flip[i-1]
                 GV_flip[i] = np.sum(P_flip[i][:,:,None,None] * (GD_flip[i] + GV_flip[i-1].squeeze()),axis=1,keepdims=True)
-
-        G_freeEnergy = GV_flip[i].squeeze().sum(axis=0)/self.n
+            toc = time.time()
+        G_freeEnergy = GV_flip[i].squeeze()/self.n
 
         return GV_flip[::-1], G_freeEnergy
 
