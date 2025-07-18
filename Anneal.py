@@ -89,8 +89,22 @@ def anneal(
                 iters=optim_iters,
                 tol=tol,
                 allowPrint=False
-                )            
+                )      
 
+        elif optimizer_name == "sampling_auto_diff":
+            F_base, FreeEnergy, G = GD.sampling_GD_at_beta_auto_diff(
+                F_base,
+                S,
+                E,
+                vrp_net,
+                n_path_samples=n_path_samples,
+                beta=beta,
+                stepsize=optim_step,
+                iters=optim_iters,
+                tol=tol,
+                allowPrint=False
+                )         
+                   
         # store data
         Y_arr.append(F_base.clone().detach())
         b_arr.append(beta)

@@ -6,16 +6,17 @@ from matplotlib import rcParams
 def plot_UAV_FLPO(drone_START, drone_END, Facilities, figuresize=(6, 5)):
 
     facecolor = "#D3D3D3"
+    # facecolor = "#FFFFFF"
     edgecolor= "#000000"
     start_locs = drone_START.squeeze(1).cpu().numpy()
     end_locs = drone_END.squeeze(1).cpu().numpy()
     f_locs = Facilities.squeeze(0).detach().cpu().numpy()
 
     plt.figure(figsize = figuresize, facecolor = facecolor,edgecolor= edgecolor)
-    plt.scatter(start_locs[:, 0], start_locs[:, 1], color="black", marker="o", alpha=0.5, label="S")
-    plt.scatter(end_locs[:, 0], end_locs[:, 1], color="red", marker="*", label="E")
-    plt.scatter(f_locs[:, 0], f_locs[:, 1], color="blue", marker="^", label="F")
-    plt.legend(facecolor = facecolor, edgecolor= edgecolor)
+    plt.scatter(start_locs[:, 0], start_locs[:, 1], color="purple", marker="X", alpha=0.2, s=200, label="S")
+    plt.scatter(end_locs[:, 0], end_locs[:, 1], color="red", marker="*", label="E", s=200)
+    plt.scatter(f_locs[:, 0], f_locs[:, 1], color="black", marker="^", label="F", s=100)
+    plt.legend(facecolor = facecolor, edgecolor= edgecolor, fontsize=24)
     plt.axis('off')
     plt.show()
 

@@ -23,11 +23,16 @@ def generate_dataset(
     num_facilities, 
     dim_, 
     device,
+    seed,
     drone_cluster_std_range = [0.01, 0.05], 
     F_noise_std = 0.005,
     F_noise_mean = 0.0,
     num_distinct_ends = 1
 ):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.random.seed()
     # Assign start location to each drone
     drone_cnt = 0
     for i in range(n_drone_clusters):
