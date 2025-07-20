@@ -149,7 +149,7 @@ def Adam_at_beta(
     for i in range(iters):
 
         D_min_drones, _, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="BeamSearch", returnGrad=False
+            vrp_net, F_base, S, E, method="Greedy", returnGrad=False
         )
         freeEnergy_drones, _ = LSENet_pass(
             lse_net, D_min_drones, D_max_range=D_max_range, beta=beta, beta_min=beta_min
