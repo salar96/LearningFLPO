@@ -1,15 +1,38 @@
 import torch
 import torch.nn as nn
-from torch.nn.utils.rnn import pad_sequence
-from RelevanceMaskGenerator import RelevanceMaskGenerator
 
-def beam_search(model: nn.Module,
-                data: torch.Tensor,
-                beam_width: int = 3,
-                start_idx: int = 0,
-                device: torch.device = None):
+
+def beam_search(
+
+    model: nn.Module,
+    data: torch.Tensor,
+    beam_width: int = 3,
+    start_idx: int = 0,
+    device: torch.device = None,
+):
+ 
     """
-    Batched beam search with visited city tracking and relevance masking.
+    Performs beam search decoding to find the best sequence of cities for a routing problem.
+    Args:
+        model (nn.Module): Neural network model with encoder and decoder components.
+        data (torch.Tensor): Input tensor of shape (batch_size, num_nodes, feature_dim) containing
+                            coordinates of cities/nodes to visit.
+        beam_width (int, optional): Number of beams to keep track of at each step. Defaults to 3.
+        start_idx (int, optional): Index of the starting node. Defaults to 0.
+        device (torch.device, optional): Device to run computations on. If None, uses data's device.
+                                        Defaults to None.
+    Returns:
+        tuple:
+            - sequences (torch.Tensor): Tensor of shape (batch_size, beam_width, seq_length) containing
+                                       the top-k sequences for each batch.
+            - scores (torch.Tensor): Tensor of shape (batch_size, beam_width) containing the
+                                    log-probability scores for each sequence.
+    Note:
+        The function assumes the model has an encoder and decoder component.
+        The encoder processes the input data to create a memory representation.
+        The decoder uses this memory and previous selections to predict the next node to visit.
+        The function keeps track of visited nodes to ensure each node is visited exactly once.
+        The last node in data is assumed to be the depot.
     """
     model.eval()
     B, N, _ = data.size()
@@ -21,28 +44,49 @@ def beam_search(model: nn.Module,
         memory = model.encoder(data)  # (B, N, d)
 
     # Initial state
-    sequences = torch.full((B, 1, 1), start_idx, dtype=torch.long, device=device)  # (B, 1, 1)
+    sequences = torch.full(
+        (B, 1, 1), start_idx, dtype=torch.long, device=device
+    )  # (B, 1, 1)
     scores = torch.zeros(B, 1, device=device)
     visited = torch.zeros(B, 1, N, dtype=torch.bool, device=device)
     visited[:, :, start_idx] = True  # mark start as visited
+
+    depot = data[:, -1, :]  # (B, d)
 
     for t in range(1, N):
         beam_size = sequences.size(1)
 
         flat_seqs = sequences.view(B * beam_size, -1)  # (B*beam, t)
-        prev_city = flat_seqs[:, -1].unsqueeze(1)  # (B*beam, 1)
+        prev_city_idx = flat_seqs[:, -1]  # (B*beam,)
+        # Get previous chosen cities' coordinates
+        data_exp = (
+            data.unsqueeze(1)
+            .expand(-1, beam_size, -1, -1)
+            .reshape(B * beam_size, N, -1)
+        )
+        prev_city = torch.gather(
+            data_exp,
+            1,
+            prev_city_idx.unsqueeze(1).unsqueeze(2).expand(-1, 1, data_exp.size(2)),
+        ).squeeze(
+            1
+        )  # (B*beam, d)
 
-        memory_exp = memory.unsqueeze(1).expand(-1, beam_size, -1, -1).reshape(B * beam_size, N, -1)
-        data_exp = data.unsqueeze(1).expand(-1, beam_size, -1, -1).reshape(B * beam_size, N, -1)
+        memory_exp = (
+            memory.unsqueeze(1)
+            .expand(-1, beam_size, -1, -1)
+            .reshape(B * beam_size, N, -1)
+        )
+        depot_exp = (
+            depot.unsqueeze(1).expand(-1, beam_size, -1).reshape(B * beam_size, -1)
+        )  # (B*beam, d)
 
         # Visited mask: (B*beam, N)
         visited_flat = visited.view(B * beam_size, N)
 
-        # Relevance mask: (B*beam, N)
-        m2 = RelevanceMaskGenerator(data_exp, prev_city)
-        mask = visited_flat | m2  # Combined mask
+        mask = visited_flat
 
-        _, logits = model.decoder(memory_exp, prev_city, relevance_mask=mask)
+        _, logits = model.decoder(memory_exp, prev_city, depot_exp, mask=mask)
         log_probs = torch.log(logits + 1e-9)
 
         log_probs = log_probs.view(B, beam_size, N)
@@ -70,97 +114,34 @@ def beam_search(model: nn.Module,
 
 
 if __name__ == "__main__":
-    from VRP_Net_L import VRPNet_L
+    from SPN import SPN
     from utils import route_cost, load_model
     from inference import inference
     from matplotlib import pyplot as plt
     from pathlib import Path
-    seed=1;
+    seed = 1
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    device = torch.device('cpu')
-    print("Running on: " , device)
-    data = torch.rand(1,50,2)
-    torch.cuda.empty_cache()
-    model_classes = {"VRPNet_L": VRPNet_L}
-    weights_address = (
-        Path("Saved_models") /
-        "VRPNet_L_lr1e-04_bs32_ep60000_samples1920000_cities50_inputdim2_"
-        "workers0_hidden64_enc1_dec1_heads8_dropout0.30_"
-        "train_PO_2025_05_17_22_43_32last_model.pth"
+    device = torch.device("cpu")
+    print("Running on: ", device)
+    data = torch.rand(1, 50, 2)
+    model_classes = {"SPN": SPN}
+    weights_address = Path("Saved_models") / "SPN100FastDecoderBest.pth"
+    spn = load_model(weights_address, model_classes, weights_only=True, device=device)
+    for param in spn.parameters():
+        param.requires_grad = False
+    print("SPN loaded on: ", spn.device)
+    beam_search_result, beam_scores = beam_search(
+        spn, data, beam_width=3, start_idx=0, device=device
     )
-    vrp_net = load_model(
-        weights_address, model_classes, weights_only=True, device=device
-    )
-    seq, scores = beam_search(vrp_net,data,beam_width=10)
- 
-    [print(route_cost(data, seq[:,i,:])) for i in range(seq.shape[1])]
-    
-    # def plot_routes(cities, routes):
-    #     for batch_index in torch.arange(len(cities)):
-    #         # Extract the specific batch
-    #         cities_batch = cities[batch_index].numpy()
-    #         route_batch = routes[batch_index].long().squeeze().numpy()
-    #         # Get coordinates of cities in the order of the route
-    #         ordered_cities = cities_batch[route_batch]
-    #         # Plot cities
-    #         plt.figure(figsize=(8, 6))
-    #         plt.scatter(
-    #             cities_batch[1:-1, 0],
-    #             cities_batch[1:-1, 1],
-    #             marker=".",
-    #             color="blue",
-    #             zorder=2,
-    #             label="Cities",
-    #         )
-     
-    #         plt.plot(
-    #             ordered_cities[:, 0],
-    #             ordered_cities[:, 1],
-    #             color="red",
-    #             linestyle="-",
-    #             zorder=1,
-    #             label="Route",
-    #         )
 
-    #         # Highlight start and end points
-    #         plt.scatter(
-    #             cities_batch[0, 0],
-    #             cities_batch[0, 1],
-    #             color="green",
-    #             s=50,
-    #             label="Start",
-    #             zorder=3,
-    #         )
-    #         plt.scatter(
-    #             cities_batch[-1, 0],
-    #             cities_batch[-1, 1],
-    #             marker="^",
-    #             color="red",
-    #             s=50,
-    #             label="End",
-    #             zorder=3,
-    #         )
-    #         model_cost = route_cost(
-    #             cities[batch_index : batch_index + 1], routes[batch_index : batch_index + 1]
-    #         )[
-    #             0
-    #         ]  # /straight_costs(cities[batch_index:batch_index+1])[0]
-            
-    #         plt.title(
-    #             f"Batch {batch_index} cost: {model_cost:.2f}"
-    #         )
-
-    #         plt.xlabel("X Coordinate")
-    #         plt.ylabel("Y Coordinate")
-    #         plt.axis("off")
-    #         plt.show()
-    #         # Save the plot to the specified folder
-    # plot_routes(data, actions)
-            
-       
-
-
-
-    
+    # now compare with greedy search
+    _ , greedy_actions = inference(data, spn, method="Greedy")
+    best_beam_actions = beam_search_result[:,0,:].unsqueeze(-1)
+    print("Greedy Actions:", greedy_actions)
+    print("Best Beam Actions:", best_beam_actions)
+    cost_greedy = route_cost(greedy_actions, data)
+    cost_beam = route_cost(best_beam_actions, data)
+    print("Greedy Cost:", cost_greedy)
+    print("Best Beam Cost:", cost_beam)

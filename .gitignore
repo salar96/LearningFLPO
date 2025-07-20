@@ -24,3 +24,4 @@ __pycache__/ModelPass.cpython-310.pyc
 __pycache__/uavFLPO.cpython-310.pyc
 __pycache__/viz.cpython-310.pyc
 __pycache__/Anneal.cpython-310.pyc
+*.pyc
