@@ -84,6 +84,9 @@ def beam_search(
         # Visited mask: (B*beam, N)
         visited_flat = visited.view(B * beam_size, N)
 
+        end_selected = prev_city_idx == (N - 1)
+        visited_flat[end_selected, :-1] = True  # mask all except last node (depot)
+
         mask = visited_flat
 
         _, logits = model.decoder(memory_exp, prev_city, depot_exp, mask=mask)
@@ -119,13 +122,14 @@ if __name__ == "__main__":
     from inference import inference
     from matplotlib import pyplot as plt
     from pathlib import Path
-    seed = 1
+    seed = 10
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Running on: ", device)
-    data = torch.rand(1, 50, 2)
+    data = torch.rand(1, 50, 2).to(device)
+    
     model_classes = {"SPN": SPN}
     weights_address = Path("Saved_models") / "SPN100FastDecoderBest.pth"
     spn = load_model(weights_address, model_classes, weights_only=True, device=device)
@@ -135,13 +139,17 @@ if __name__ == "__main__":
     beam_search_result, beam_scores = beam_search(
         spn, data, beam_width=3, start_idx=0, device=device
     )
-
+    
     # now compare with greedy search
-    _ , greedy_actions = inference(data, spn, method="Greedy")
-    best_beam_actions = beam_search_result[:,0,:].unsqueeze(-1)
+    _, greedy_actions = inference(data, spn, method="Greedy")
     print("Greedy Actions:", greedy_actions)
-    print("Best Beam Actions:", best_beam_actions)
-    cost_greedy = route_cost(greedy_actions, data)
-    cost_beam = route_cost(best_beam_actions, data)
-    print("Greedy Cost:", cost_greedy)
-    print("Best Beam Cost:", cost_beam)
+    cost_greedy = route_cost(data, greedy_actions)
+    print(f"Greedy Cost: {cost_greedy}")
+
+    print("Beam Search Actions:")
+    for i in range(beam_search_result.size(1)):
+        beam_actions = beam_search_result[:, i, :].unsqueeze(-1)
+        cost_beam = route_cost(data, beam_actions)
+        # print(f"Beam {i} Actions: {beam_actions}")
+        print(f"Beam {i} Cost: {cost_beam}")
+        print(f"Beam {i} Score: {beam_scores[:, i]}")
