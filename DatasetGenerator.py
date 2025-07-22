@@ -74,7 +74,7 @@ def generate_dataset(
     # )  # torch.rand(num_drones, 1, dim_, requires_grad=False, device=device)
 
     # Create the data tensor
-    F_means = torch.mean(START_locs, dim=0).repeat(num_facilities, 1)
+    F_means = torch.mean(START_locs-0.5, dim=0).repeat(num_facilities, 1)
     F_noise = torch.normal(
         mean = F_noise_mean * torch.ones(num_facilities, dim_, device=device),
         std = F_noise_std * torch.ones(num_facilities, dim_, device=device),

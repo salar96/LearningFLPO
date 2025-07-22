@@ -312,7 +312,7 @@ def sampling_GD_at_beta_auto_diff(
         with torch.no_grad():
             Norm_G = torch.norm(G).item()
             tol_Y = torch.norm(F_base-F_prev).item()
-        if tol_Y < tol:
+        if Norm_G < tol:
             if allowPrint:
                 print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
             break

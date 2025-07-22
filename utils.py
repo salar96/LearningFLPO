@@ -93,6 +93,31 @@ def calc_routs(P_ss):
           A.append(a)
         return np.array(O),np.array(A) # recently changed A to np.array(A)
 
+def calc_routs_uavFLPO(START_locs, END_locs, F_locs):
+    routes = []
+
+    start_locs_np = START_locs.cpu().numpy().reshape(-1,2)
+    end_locs_np = END_locs.cpu().numpy().reshape(-1,2)
+    fac_locs = F_locs.detach().cpu().numpy().squeeze()
+
+    n_drones = start_locs_np.shape[0]
+    n_facilities = fac_locs.shape[0]    
+
+    for i in range(n_drones):
+        uav_flpo = UFO.FLPO(
+            start_locs_np[i,None],
+            end_locs_np[i,None],
+            n_facilities,
+            scale=1.0,
+            disType='sqeuclidean',
+            selfHop=False
+        )
+        D_s, _ = uav_flpo.returnStagewiseCost(fac_locs)
+        _, _, _, _, P_ss = uav_flpo.backPropDP(D_s, beta=1e4, returnPb=True)
+        route = uav_flpo.calc_route(P_ss)
+        routes.append(route)
+    return routes
+
 def generate_true_labels(data_batch, beta):
     num_facilities = data_batch.shape[1]-2
     drones = torch.cat((data_batch[:,0:1,:], data_batch[:,-1:,:]), dim=1).detach().cpu().numpy()

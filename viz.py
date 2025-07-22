@@ -167,6 +167,111 @@ def plot_UAV_FLPO_3D(
         fig.show()
 
 
+def plot_uavFLPO_with_routes(
+    START_locs, 
+    END_locs, 
+    F_locs, 
+    final_cost,
+    runtime,
+    routes, 
+    fraction_to_plot=0.3, 
+    textcoords=[0.3, 0.95],
+    textsize=18,
+    random_seed=None
+):
+    """
+    Plot a subset of UAV routes, color-coded by destination, with a clean visual design.
+    """
+
+    start_locs_np = START_locs.cpu().numpy().reshape(-1,2)
+    end_locs_np = END_locs.cpu().numpy().reshape(-1,2)
+    fac_locs = F_locs.detach().cpu().numpy().squeeze()
+
+    num_uavs = start_locs_np.shape[0]
+    num_facs = fac_locs.shape[0]
+    num_to_plot = max(1, int(fraction_to_plot * num_uavs))
+
+    if random_seed is not None:
+        random.seed(random_seed)
+
+    selected_indices = set(random.sample(range(num_uavs), num_to_plot))
+
+    # Assign color by unique destination
+    unique_dests, dest_indices = np.unique(end_locs_np, axis=0, return_inverse=True)
+    dest_cmap = cm.get_cmap('tab10', len(unique_dests))
+
+    plt.figure(figsize=(12, 8))
+
+    # Plot all UAV start/end locations (transparent if not selected)
+    for i in range(num_uavs):
+        color = dest_cmap(dest_indices[i])
+        alpha = 1.0 if i in selected_indices else 0.3
+        plt.scatter(start_locs_np[i, 0], start_locs_np[i, 1], marker='s', c=[color], alpha=alpha, edgecolor='black', s=50)
+        plt.scatter(end_locs_np[i, 0], end_locs_np[i, 1], marker='*', c=[color], alpha=alpha, edgecolor='black', s=400)
+
+    # Plot selected UAV routes
+    for i in selected_indices:
+        color = dest_cmap(dest_indices[i])
+        start = start_locs_np[i]
+        end = end_locs_np[i]
+        route_coords = fac_locs[routes[i]] if routes[i] else np.empty((0, 2))
+        full_path = np.vstack([start, route_coords, end])
+        plt.plot(full_path[:, 0], full_path[:, 1], '-o', color=color)
+
+    # Plot all facility locations
+    plt.scatter(fac_locs[:, 0], fac_locs[:, 1], c='gray', marker='.', s=50, alpha=0.4)
+
+    # Create minimal legend
+    legend_elements = [
+        mlines.Line2D([], [], color='gray', marker='s', linestyle='None', markersize=8, label='UAV start'),
+        mlines.Line2D([], [], color='gray', marker='X', linestyle='None', markersize=15, label='UAV end'),
+        mlines.Line2D([], [], color='gray', marker='.', linestyle='None', markersize=12, label='Facility'),
+        mlines.Line2D([], [], color='black', linestyle='-', label='Path')
+    ]
+    # plt.legend(handles=legend_elements, fontsize=24, ncol=4, loc='bottom center')
+
+    # # add text for M, N, n_ends and final cost
+    xcords, ycords = textcoords
+    # plt.text(
+    #     xcords,
+    #     ycords,
+    #     f"N={num_uavs}, M={num_facs},\nD={final_cost:.2e}, T={runtime:.2e} s",
+    #     fontsize=textsize,
+    #     color='black')
+
+    # Add styled text with box
+    plt.text(
+        xcords,
+        ycords,
+        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.2e}$, $T={runtime:.2e}$ s",
+        fontsize=textsize,
+        color='black',
+        fontname='Times New Roman', # 'DejaVu Serif',  Or 'Times New Roman'
+        bbox=dict(
+            facecolor='white',
+            edgecolor='black',
+            boxstyle='round,pad=0.3',
+            linewidth=1.0
+        ),
+        ha='left',  # horizontal alignment
+        va='top'    # vertical alignment
+    )
+
+
+    # Clean plot: remove ticks and labels, keep frame
+    plt.xticks([])
+    plt.yticks([])
+    for spine in plt.gca().spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.2)
+
+    plt.box(True)
+    plt.tight_layout()
+    plt.show()
+
+
+
+
 if __name__ == "__main__":
     import torch
 
@@ -188,67 +293,3 @@ if __name__ == "__main__":
     )
     print("Saved interactive figure to", html_file)
 
-def plot_uavFLPO_with_routes(
-    START_locs, 
-    END_locs, 
-    fac_locs, 
-    routes, 
-    fraction_to_plot=0.3, 
-    random_seed=None
-):
-    """
-    Plot a subset of UAV routes, color-coded by destination, with a clean visual design.
-    """
-
-    num_uavs = START_locs.shape[0]
-    num_to_plot = max(1, int(fraction_to_plot * num_uavs))
-
-    if random_seed is not None:
-        random.seed(random_seed)
-
-    selected_indices = set(random.sample(range(num_uavs), num_to_plot))
-
-    # Assign color by unique destination
-    unique_dests, dest_indices = np.unique(END_locs, axis=0, return_inverse=True)
-    dest_cmap = cm.get_cmap('tab10', len(unique_dests))
-
-    plt.figure(figsize=(12, 8))
-
-    # Plot all UAV start/end locations (transparent if not selected)
-    for i in range(num_uavs):
-        color = dest_cmap(dest_indices[i])
-        alpha = 1.0 if i in selected_indices else 0.4
-        plt.scatter(START_locs[i, 0], START_locs[i, 1], marker='s', c=[color], alpha=alpha, edgecolor='black')
-        plt.scatter(END_locs[i, 0], END_locs[i, 1], marker='X', c=[color], alpha=alpha, edgecolor='black', s=200)
-
-    # Plot selected UAV routes
-    for i in selected_indices:
-        color = dest_cmap(dest_indices[i])
-        start = START_locs[i]
-        end = END_locs[i]
-        route_coords = fac_locs[routes[i]] if routes[i] else np.empty((0, 2))
-        full_path = np.vstack([start, route_coords, end])
-        plt.plot(full_path[:, 0], full_path[:, 1], '-o', color=color)
-
-    # Plot all facility locations
-    plt.scatter(fac_locs[:, 0], fac_locs[:, 1], c='gray', marker='.', s=50, alpha=0.4)
-
-    # Create minimal legend
-    legend_elements = [
-        mlines.Line2D([], [], color='gray', marker='s', linestyle='None', markersize=8, label='UAV start'),
-        mlines.Line2D([], [], color='gray', marker='X', linestyle='None', markersize=15, label='UAV end'),
-        mlines.Line2D([], [], color='gray', marker='.', linestyle='None', markersize=12, label='Facility'),
-        mlines.Line2D([], [], color='black', linestyle='-', label='Path')
-    ]
-    plt.legend(handles=legend_elements, fontsize=24)
-
-    # Clean plot: remove ticks and labels, keep frame
-    plt.xticks([])
-    plt.yticks([])
-    for spine in plt.gca().spines.values():
-        spine.set_visible(True)
-        spine.set_linewidth(1.2)
-
-    plt.box(True)
-    plt.tight_layout()
-    plt.show()
