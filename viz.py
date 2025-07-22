@@ -2,6 +2,10 @@ import plotly.graph_objects as go
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import rcParams
+import matplotlib.lines as mlines
+import matplotlib.cm as cm
+import random
+
 
 def plot_UAV_FLPO(drone_START, drone_END, Facilities, figuresize=(6, 5)):
 
@@ -183,3 +187,68 @@ if __name__ == "__main__":
         output_html="uav_scene.html",
     )
     print("Saved interactive figure to", html_file)
+
+def plot_uavFLPO_with_routes(
+    START_locs, 
+    END_locs, 
+    fac_locs, 
+    routes, 
+    fraction_to_plot=0.3, 
+    random_seed=None
+):
+    """
+    Plot a subset of UAV routes, color-coded by destination, with a clean visual design.
+    """
+
+    num_uavs = START_locs.shape[0]
+    num_to_plot = max(1, int(fraction_to_plot * num_uavs))
+
+    if random_seed is not None:
+        random.seed(random_seed)
+
+    selected_indices = set(random.sample(range(num_uavs), num_to_plot))
+
+    # Assign color by unique destination
+    unique_dests, dest_indices = np.unique(END_locs, axis=0, return_inverse=True)
+    dest_cmap = cm.get_cmap('tab10', len(unique_dests))
+
+    plt.figure(figsize=(12, 8))
+
+    # Plot all UAV start/end locations (transparent if not selected)
+    for i in range(num_uavs):
+        color = dest_cmap(dest_indices[i])
+        alpha = 1.0 if i in selected_indices else 0.4
+        plt.scatter(START_locs[i, 0], START_locs[i, 1], marker='s', c=[color], alpha=alpha, edgecolor='black')
+        plt.scatter(END_locs[i, 0], END_locs[i, 1], marker='X', c=[color], alpha=alpha, edgecolor='black', s=200)
+
+    # Plot selected UAV routes
+    for i in selected_indices:
+        color = dest_cmap(dest_indices[i])
+        start = START_locs[i]
+        end = END_locs[i]
+        route_coords = fac_locs[routes[i]] if routes[i] else np.empty((0, 2))
+        full_path = np.vstack([start, route_coords, end])
+        plt.plot(full_path[:, 0], full_path[:, 1], '-o', color=color)
+
+    # Plot all facility locations
+    plt.scatter(fac_locs[:, 0], fac_locs[:, 1], c='gray', marker='.', s=50, alpha=0.4)
+
+    # Create minimal legend
+    legend_elements = [
+        mlines.Line2D([], [], color='gray', marker='s', linestyle='None', markersize=8, label='UAV start'),
+        mlines.Line2D([], [], color='gray', marker='X', linestyle='None', markersize=15, label='UAV end'),
+        mlines.Line2D([], [], color='gray', marker='.', linestyle='None', markersize=12, label='Facility'),
+        mlines.Line2D([], [], color='black', linestyle='-', label='Path')
+    ]
+    plt.legend(handles=legend_elements, fontsize=24)
+
+    # Clean plot: remove ticks and labels, keep frame
+    plt.xticks([])
+    plt.yticks([])
+    for spine in plt.gca().spines.values():
+        spine.set_visible(True)
+        spine.set_linewidth(1.2)
+
+    plt.box(True)
+    plt.tight_layout()
+    plt.show()

@@ -272,6 +272,8 @@ def sampling_GD_at_beta_auto_diff(
 
     for i in range(iters):
         
+        F_prev = F_base.clone().detach()
+
         # get the shortest paths
         D_mins, _, _ = VRPNet_pass( 
             vrp_net, 
@@ -304,17 +306,19 @@ def sampling_GD_at_beta_auto_diff(
         optimizer.zero_grad()
         freeEnergy.backward()
         G = F_base.grad
-        with torch.no_grad():
-            Norm_G = torch.norm(G).item()
-        if Norm_G < tol:
-            if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
-            break
         # optimizer step 
         optimizer.step()
 
+        with torch.no_grad():
+            Norm_G = torch.norm(G).item()
+            tol_Y = torch.norm(F_base-F_prev).item()
+        if tol_Y < tol:
+            if allowPrint:
+                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
+            break
+
         # print data
         if allowPrint:
-            print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
+            print(f"iter: {i}\tFreeE:{freeEnergy:.3f}\tNorm_G: {Norm_G:.3f}\ttolY:{tol_Y:.3f}\tmean_D_min:{torch.mean(D_mins).detach().item():.3e}")
 
     return F_base, freeEnergy, G

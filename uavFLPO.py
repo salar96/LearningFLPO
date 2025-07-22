@@ -242,6 +242,39 @@ class FLPO():
 
         return GV_flip[::-1], G_freeEnergy
 
+    def calc_route(self, Pb):
+        O = []
+        for i,p in enumerate(Pb):
+            if i==0:
+                m = np.argmax(p[0,:])
+            else:
+                m = np.argmax(p[m,:])
+            if m == self.f:
+                break
+            else:
+                O.append(m)
+        return O
+
+    # def calc_routs(P_ss):
+    #     """ Given the associations for each drone, return the routs (facility ids) for each. """
+    #     O=[]
+    #     A=[]
+    #     for i in range(len(P_ss)):
+    #         indices = [0]
+    #         first_action = np.zeros(len(P_ss[i]))
+    #         first_action[0]=1
+    #         o=[first_action]
+    #         a = [0]
+    #         for p in P_ss[i]:
+    #             m = np.argmax(p[indices[-1],:])
+    #             a.append(m+1)
+    #             o.append(np.concatenate(([0],p[indices[-1],:])))
+    #             indices.append(m)
+    #         o.pop()
+    #         a.pop()
+    #         O.append(o)
+    #         A.append(a)
+    #         return np.array(O),np.array(A) # recently changed A to np.array(A)
 
     def objective(self, params, beta):
         D_s, _ = self.returnStagewiseCost(params.reshape(-1,2))
