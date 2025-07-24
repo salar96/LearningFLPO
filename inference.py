@@ -33,7 +33,8 @@ def inference(data , model, method = 'BeamSearch'):
             actions[:, t, 0] = torch.argmax(outs, dim=-1)
 
     elif method == 'BeamSearch':
-        actions, scores = beam_search(model,data,beam_width=5)
+        beam_width = min(10, num_cities - 1)  # Ensure beam width does not exceed number of cities
+        actions, scores = beam_search(model, data, beam_width=beam_width)
     elif method == "sampling":
         actions = torch.zeros(num_data, num_cities, 1).to(device)
         P_s = torch.zeros(num_data, num_cities, num_cities).to(device)
