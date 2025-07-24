@@ -6,14 +6,12 @@ def anneal(
     F_base,
     S,
     E,
-    vrp_net,
-    lse_net,
+    spn,
     optim_iters,
     optim_step,
     beta_min,
     beta_max,
     beta_grow,
-    D_max_range,
     tol,
     optimizer_name,
     n_path_samples,
@@ -28,50 +26,46 @@ def anneal(
     while beta <= beta_max:
         # optimize using gradient descent iterations
 
-        if optimizer_name == "gradient_descent0":
-            F_base, FreeEnergy, G = GD.GD_at_beta0(
-                F_base,
-                S,
-                E,
-                vrp_net,
-                lse_net,
-                optim_iters,
-                optim_step,
-                beta_min,
-                beta,
-                D_max_range=D_max_range,
-                tol = tol,
-                allowPrint=False,
-            )
+        # if optimizer_name == "gradient_descent0":
+        #     F_base, FreeEnergy, G = GD.GD_at_beta0(
+        #         F_base,
+        #         S,
+        #         E,
+        #         spn,
+        #         lse_net,
+        #         optim_iters,
+        #         optim_step,
+        #         beta_min,
+        #         beta,
+        #         D_max_range=D_max_range,
+        #         tol = tol,
+        #         allowPrint=False,
+        #     )
 
-        elif optimizer_name == "gradient_descent1":
-            F_base, FreeEnergy, G = GD.GD_at_beta1(
-                F_base,
-                S,
-                E,
-                vrp_net,
-                lse_net,
-                optim_iters,
-                optim_step,
-                beta_min,
-                beta,
-                D_max_range=D_max_range,
-                tol = tol,
-                allowPrint=False,
-            )
+        # elif optimizer_name == "gradient_descent1":
+        #     F_base, FreeEnergy, G = GD.GD_at_beta1(
+        #         F_base,
+        #         S,
+        #         E,
+        #         spn,
+        #         lse_net,
+        #         optim_iters,
+        #         optim_step,
+        #         beta_min,
+        #         beta,
+        #         D_max_range=D_max_range,
+        #         tol = tol,
+        #         allowPrint=False,
+        #     )
 
-        elif optimizer_name == "adam":
+        if optimizer_name == "adam":
             F_base, FreeEnergy, G = GD.Adam_at_beta(
                 F_base,
                 S,
                 E,
-                vrp_net,
-                lse_net,
+                spn,
                 optim_iters,
                 optim_step,
-                beta_min,
-                beta,
-                D_max_range=D_max_range,
                 tol = tol,
                 allowPrint=False,
                 return_list = False
@@ -82,7 +76,7 @@ def anneal(
                 F_base,
                 S,
                 E,
-                vrp_net,
+                spn,
                 n_path_samples=n_path_samples,
                 beta=beta,
                 stepsize=optim_step,
@@ -96,7 +90,7 @@ def anneal(
                 F_base,
                 S,
                 E,
-                vrp_net,
+                spn,
                 n_path_samples=n_path_samples,
                 beta=beta,
                 stepsize=optim_step,

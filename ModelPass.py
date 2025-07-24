@@ -4,7 +4,7 @@ import utils
 from inference import inference
 
 
-def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
+def SPN_pass(spn, F_base, S, E, method="Greedy", returnGrad=False):
     num_drones = S.shape[0]
     num_facilities = F_base.shape[1]
     F_locs = F_base.expand(num_drones, -1, -1)  # view, shares grad with F_base
@@ -17,7 +17,7 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
             
             actions = torch.tensor(actions).unsqueeze(-1)
         else:
-            _, actions = inference(data, vrp_net, method)  # For large networks we use SPN
+            _, actions = inference(data, spn, method)  # For large networks we use SPN
         e = time.time()-s
         # print("time elapsed: " , e)
 
@@ -47,39 +47,39 @@ def VRPNet_pass(vrp_net, F_base, S, E, method="Greedy", returnGrad=False):
 
 
 # Free energy as a function of shortest path, and its gradients
-def LSENet_pass(lse_net, D_min_drones, D_max_range, beta, beta_min, returnGrad=False):
-    device = D_min_drones.device
-    num_drones = D_min_drones.shape[0]
-    Fmin_est = utils.area_approx_F(
-        D_min_drones, D_max_range=D_max_range, beta=beta_min, printCalculations=False
-    )
-    Fmin_est.detach()
-    In_lse = torch.cat(
-        (
-            Fmin_est.to(device),
-            D_min_drones,
-            (
-                torch.ones(D_min_drones.shape, device=device)
-                * torch.log(torch.tensor([beta], device=device))
-                / torch.log(torch.tensor([10.0], device=device))
-            ),
-        ),
-        axis=1,
-    )
-    FreeEnergy = lse_net(In_lse)
+# def LSENet_pass(lse_net, D_min_drones, D_max_range, beta, beta_min, returnGrad=False):
+#     device = D_min_drones.device
+#     num_drones = D_min_drones.shape[0]
+#     Fmin_est = utils.area_approx_F(
+#         D_min_drones, D_max_range=D_max_range, beta=beta_min, printCalculations=False
+#     )
+#     Fmin_est.detach()
+#     In_lse = torch.cat(
+#         (
+#             Fmin_est.to(device),
+#             D_min_drones,
+#             (
+#                 torch.ones(D_min_drones.shape, device=device)
+#                 * torch.log(torch.tensor([beta], device=device))
+#                 / torch.log(torch.tensor([10.0], device=device))
+#             ),
+#         ),
+#         axis=1,
+#     )
+#     FreeEnergy = lse_net(In_lse)
 
-    if returnGrad:
-        gradient = torch.autograd.grad(
-            outputs=FreeEnergy,
-            inputs=In_lse,
-            grad_outputs=torch.ones_like(FreeEnergy),
-        )
-        # dFreeE_dDmin = gradient[0].view(num_drones,1,1)
+#     if returnGrad:
+#         gradient = torch.autograd.grad(
+#             outputs=FreeEnergy,
+#             inputs=In_lse,
+#             grad_outputs=torch.ones_like(FreeEnergy),
+#         )
+#         # dFreeE_dDmin = gradient[0].view(num_drones,1,1)
 
-        dFreeE_dDmin = gradient[0][:, 1].view(-1, 1).view(num_drones, 1, 1)
-    else:
-        dFreeE_dDmin = None
-    return FreeEnergy, dFreeE_dDmin
+#         dFreeE_dDmin = gradient[0][:, 1].view(-1, 1).view(num_drones, 1, 1)
+#     else:
+#         dFreeE_dDmin = None
+#     return FreeEnergy, dFreeE_dDmin
 
 # should output a path cost for each drone sampled at random
 def sampling_pass(F_base, S, E, n_samples, returnGrad=False):
