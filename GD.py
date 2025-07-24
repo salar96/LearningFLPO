@@ -6,138 +6,134 @@ def gradient_descent_step(Y, dY, eta):
     return Y - eta * dY
 
 
-# optimize using gradient descent at given beta
-def GD_at_beta0(
-    F_base,
-    S,
-    E,
-    vrp_net,
-    lse_net,
-    iters,
-    stepsize,
-    beta_min,
-    beta,
-    D_max_range,
-    tol = 1e-3,
-    allowPrint=False,
-):
-    assert F_base.requires_grad == True
+# # optimize using gradient descent at given beta
+# def GD_at_beta0(
+#     F_base,
+#     S,
+#     E,
+#     vrp_net,
+#     lse_net,
+#     iters,
+#     stepsize,
+#     beta_min,
+#     beta,
+#     D_max_range,
+#     tol = 1e-3,
+#     allowPrint=False,
+# ):
+#     assert F_base.requires_grad == True
 
-    for i in range(iters):
+#     for i in range(iters):
 
-        # free energy and gradients using VRP_net and LSE_net
-        D_min_drones, dDmin_dFlocs, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="Greedy", returnGrad=True
-        )
-        freeEnergy_drones, dFreeE_dDmin = LSENet_pass(
-            lse_net,
-            D_min_drones,
-            D_max_range=D_max_range,
-            beta=beta,
-            beta_min=beta_min,
-            returnGrad=True,
-        )
-        freeEnergy = torch.mean(freeEnergy_drones)
+#         # free energy and gradients using VRP_net and LSE_net
+#         D_min_drones, dDmin_dFlocs, _ = VRPNet_pass(
+#             vrp_net, F_base, S, E, method="Greedy", returnGrad=True
+#         )
+#         freeEnergy_drones, dFreeE_dDmin = LSENet_pass(
+#             lse_net,
+#             D_min_drones,
+#             D_max_range=D_max_range,
+#             beta=beta,
+#             beta_min=beta_min,
+#             returnGrad=True,
+#         )
+#         freeEnergy = torch.mean(freeEnergy_drones)
 
-        torch.cuda.empty_cache()
-        # print(dDmin_dFlocs.shape)
-        # print(dFreeE_dDmin.shape)
+#         torch.cuda.empty_cache()
+#         # print(dDmin_dFlocs.shape)
+#         # print(dFreeE_dDmin.shape)
 
-        # total gradient using chain rule and backpropagation
-        total_gradient = dDmin_dFlocs * dFreeE_dDmin
-        G = torch.mean(total_gradient, axis=0)
+#         # total gradient using chain rule and backpropagation
+#         total_gradient = dDmin_dFlocs * dFreeE_dDmin
+#         G = torch.mean(total_gradient, axis=0)
 
-        with torch.no_grad():
-            Norm_G = torch.norm(G).item()
-        if Norm_G < tol:
-            if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
-            break
+#         with torch.no_grad():
+#             Norm_G = torch.norm(G).item()
+#         if Norm_G < tol:
+#             if allowPrint:
+#                 print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
+#             break
 
-        # optimizer step
-        F_base = gradient_descent_step(F_base, G, stepsize)
+#         # optimizer step
+#         F_base = gradient_descent_step(F_base, G, stepsize)
 
-        # print data
-        if allowPrint:
-            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
+#         # print data
+#         if allowPrint:
+#             print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
 
-    return F_base, freeEnergy_drones, G
+#     return F_base, freeEnergy_drones, G
 
 
-# optimize using gradient descent at given beta
-def GD_at_beta1(
-    F_base,
-    S,
-    E,
-    vrp_net,
-    lse_net,
-    iters,
-    stepsize,
-    beta_min,
-    beta,
-    D_max_range,
-    tol = 1e-3,
-    allowPrint=False,
-):
+# # optimize using gradient descent at given beta
+# def GD_at_beta1(
+#     F_base,
+#     S,
+#     E,
+#     vrp_net,
+#     lse_net,
+#     iters,
+#     stepsize,
+#     beta_min,
+#     beta,
+#     D_max_range,
+#     tol = 1e-3,
+#     allowPrint=False,
+# ):
 
-    assert F_base.requires_grad == True
+#     assert F_base.requires_grad == True
 
-    for i in range(iters):
+#     for i in range(iters):
 
-        # free energy and gradients using VRP_net and LSE_net
-        D_min_drones, _, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="Greedy", returnGrad=False
-        )
+#         # free energy and gradients using VRP_net and LSE_net
+#         D_min_drones, _, _ = VRPNet_pass(
+#             vrp_net, F_base, S, E, method="Greedy", returnGrad=False
+#         )
 
-        freeEnergy_drones, _ = LSENet_pass(
-            lse_net,
-            D_min_drones,
-            D_max_range=D_max_range,
-            beta=beta,
-            beta_min=beta_min,
-            returnGrad=False,
-        )
-        freeEnergy = torch.mean(freeEnergy_drones)
+#         freeEnergy_drones, _ = LSENet_pass(
+#             lse_net,
+#             D_min_drones,
+#             D_max_range=D_max_range,
+#             beta=beta,
+#             beta_min=beta_min,
+#             returnGrad=False,
+#         )
+#         freeEnergy = torch.mean(freeEnergy_drones)
 
-        torch.cuda.empty_cache()
+#         torch.cuda.empty_cache()
 
-        # total gradient using chain rule and backpropagation
-        total_gradient = torch.autograd.grad(
-            outputs=freeEnergy,
-            inputs=F_base,
-            grad_outputs=torch.ones_like(freeEnergy),
-            create_graph=True,
-        )
-        G = total_gradient[0]
+#         # total gradient using chain rule and backpropagation
+#         total_gradient = torch.autograd.grad(
+#             outputs=freeEnergy,
+#             inputs=F_base,
+#             grad_outputs=torch.ones_like(freeEnergy),
+#             create_graph=True,
+#         )
+#         G = total_gradient[0]
 
-        with torch.no_grad():
-            Norm_G = torch.norm(G).item()
-        if Norm_G < tol:
-            if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
-            break
+#         with torch.no_grad():
+#             Norm_G = torch.norm(G).item()
+#         if Norm_G < tol:
+#             if allowPrint:
+#                 print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
+#             break
 
-        # optimizer step
-        F_base = gradient_descent_step(F_base, G, stepsize)
+#         # optimizer step
+#         F_base = gradient_descent_step(F_base, G, stepsize)
 
-        # print data
-        if allowPrint:
-            print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
+#         # print data
+#         if allowPrint:
+#             print(f"iter: {i}\tFreeE: {freeEnergy:.4e}\tNorm gradient: {Norm_G:.3f}\tmean_D_min:{torch.mean(D_min_drones).detach().item():.3e}")
 
-    return F_base, freeEnergy_drones, G
+#     return F_base, freeEnergy_drones, G
 
 
 def Adam_at_beta(
     F_base,
     S,
     E,
-    vrp_net,
-    lse_net,
+    spn,
     iters,
     optim_stepsize,
-    beta_min,
-    beta,
-    D_max_range,
     tol = 1e-3,
     allowPrint=False,
     return_list = False
@@ -148,13 +144,13 @@ def Adam_at_beta(
         Y_arr = [F_base.clone().detach()]
     for i in range(iters):
 
-        D_min_drones, _, _ = VRPNet_pass(
-            vrp_net, F_base, S, E, method="Greedy", returnGrad=False
+        D_min_drones, _, _ = SPN_pass(
+            spn, F_base, S, E, method="Greedy", returnGrad=False
         )
-        freeEnergy_drones, _ = LSENet_pass(
-            lse_net, D_min_drones, D_max_range=D_max_range, beta=beta, beta_min=beta_min
-        )
-        freeEnergy = torch.mean(freeEnergy_drones)
+        # freeEnergy_drones, _ = LSENet_pass(
+        #     lse_net, D_min_drones, D_max_range=D_max_range, beta=beta, beta_min=beta_min
+        # )
+        freeEnergy = torch.mean(D_min_drones)
 
         torch.cuda.empty_cache()
 
@@ -185,7 +181,7 @@ def sampling_GD_at_beta(
     F_base,
     S,
     E,
-    vrp_net,
+    spn,
     n_path_samples,
     beta,
     stepsize,
@@ -203,8 +199,8 @@ def sampling_GD_at_beta(
     for i in range(iters):
         
         # get the shortest paths
-        D_mins, GD_mins, _ = VRPNet_pass(
-            vrp_net, 
+        D_mins, GD_mins, _ = SPN_pass(
+            spn, 
             F_base, 
             S, 
             E,
@@ -255,7 +251,7 @@ def sampling_GD_at_beta_auto_diff(
     F_base,
     S,
     E,
-    vrp_net,
+    spn,
     n_path_samples,
     beta,
     stepsize,
@@ -275,8 +271,8 @@ def sampling_GD_at_beta_auto_diff(
         F_prev = F_base.clone().detach()
 
         # get the shortest paths
-        D_mins, _, _ = VRPNet_pass( 
-            vrp_net, 
+        D_mins, _, _ = SPN_pass( 
+            spn, 
             F_base, 
             S, 
             E, 
