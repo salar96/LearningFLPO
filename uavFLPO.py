@@ -220,7 +220,7 @@ class FLPO():
 
         freeEnergy = np.sum(V_flip[K-1])/self.n
 
-        return Lambda_flip[::-1], V_flip[::-1], freeEnergy, tf-t0, p_flip[::-1][:-1]
+        return Lambda_flip[::-1], V_flip[::-1], freeEnergy, tf-t0, p_flip[::-1]
     
 
     def backPropDP_grad(self, GD_s, P):

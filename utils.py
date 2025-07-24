@@ -113,8 +113,8 @@ def calc_routs_uavFLPO(START_locs, END_locs, F_locs):
             selfHop=False
         )
         D_s, _ = uav_flpo.returnStagewiseCost(fac_locs)
-        _, _, _, _, P_ss = uav_flpo.backPropDP(D_s, beta=1e4, returnPb=True)
-        route = uav_flpo.calc_route(P_ss)
+        _, _, _, _, P_s = uav_flpo.backPropDP(D_s, beta=1e4, returnPb=True)
+        route = uav_flpo.calc_route(P_s)
         routes.append(route)
     return routes
 
@@ -124,7 +124,6 @@ def generate_true_labels(data_batch, beta):
     uav_net = UAV_Net(drones, num_facilities)
     params = data_batch[:,1:-1,:].detach().cpu().numpy()
     P_ss = calc_associations(uav_net.return_stagewise_cost(params),beta = beta)
-    # print(P_ss[0])
     label_outs , label_actions = calc_routs(P_ss)
     return label_outs , label_actions
 
@@ -133,6 +132,7 @@ def generate_true_labels1(data_batch, beta):
     drones = torch.cat((data_batch[:,0:1,:], data_batch[:,-1:,:]), dim=1).detach().cpu().numpy()
     # calculate associations for each drone
     P_ss = []
+    # routes = []
     params_batch = data_batch[:,1:-1,:].detach().cpu().numpy()
     # print(f'params_batch:{params_batch}')
     for i, drone in enumerate(drones):
@@ -143,6 +143,7 @@ def generate_true_labels1(data_batch, beta):
         # print(f'params:{params}')
         D_s, _ = flpo_agent.returnStagewiseCost(params)
         _, _, _, _, P_s = flpo_agent.backPropDP(D_s, beta=beta, returnPb=True)
+        # route = flpo_agent.calc_route(P_s)
         P_ss.append(P_s)
     # calculate routs and action labels
     label_outs , label_actions = calc_routs(P_ss)
