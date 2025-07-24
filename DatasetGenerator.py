@@ -23,7 +23,7 @@ def generate_dataset(
     num_facilities, 
     dim_, 
     device,
-    seed,
+    seed = 43,
     drone_cluster_std_range = [0.01, 0.05], 
     F_noise_std = 0.005,
     F_noise_mean = 0.0,
