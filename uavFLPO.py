@@ -20,7 +20,7 @@ class FLPO():
         self.scale = scale
         self.distance = disType
         self.selfHop = selfHop
-        self.stageHorizon = self.f+1
+        self.stageHorizon = self.f+2
         self.bounds = [(0,self.scale)]*self.f*2
         self.MY_INF = 1e15*self.scale
         # self.nPaths = self.return_n_paths()
