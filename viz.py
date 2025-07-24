@@ -243,7 +243,7 @@ def plot_uavFLPO_with_routes(
     plt.text(
         xcords,
         ycords,
-        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.2e}$, $T={runtime:.2e}$ s",
+        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.2f}$, $T={runtime:.2f}$ s",
         fontsize=textsize,
         color='black',
         fontname='Times New Roman', # 'DejaVu Serif',  Or 'Times New Roman'
