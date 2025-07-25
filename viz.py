@@ -216,10 +216,18 @@ def plot_uavFLPO_with_routes(
         color = dest_cmap(dest_indices[i])
         start = start_locs_np[i]
         end = end_locs_np[i]
-        route_coords = fac_locs[routes[i]] if routes[i] else np.empty((0, 2))
+        facility_ids = routes[i].astype(int)
+
+        # Keep only valid facility indices: [0, num_facs)
+        valid_fac_ids = facility_ids[facility_ids < num_facs]
+        route_coords = fac_locs[valid_fac_ids-1] if len(valid_fac_ids) > 0 else np.empty((0, 2))
+
         full_path = np.vstack([start, route_coords, end])
-        plt.plot(full_path[1:, 0], full_path[1:, 1], '-o', color=color)
-        plt.plot(full_path[0:2, 0], full_path[0:2, 1], '-', color=color)
+
+        if full_path.shape[0] >= 2:
+            plt.plot(full_path[0:2, 0], full_path[0:2, 1], '-', color=color)     # Start to first facility or end
+        if full_path.shape[0] > 2:
+            plt.plot(full_path[1:, 0], full_path[1:, 1], '-o', color=color)     # Facilities to end
 
     # Plot all facility locations
     plt.scatter(fac_locs[:, 0], fac_locs[:, 1], c='gray', marker='.', s=50, alpha=0.4)
@@ -247,13 +255,12 @@ def plot_uavFLPO_with_routes(
     plt.text(
         xcords,
         ycords,
-        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.3f}$, $T={int(runtime)}$ s",
+        f"$N={num_uavs}$\n $M={num_facs}$\n $D={final_cost*100:.2f}$\n $T={int(runtime)}$s",
         fontsize=textsize,
         color='black',
-        fontname='Times New Roman',
         bbox=dict(
-            facecolor='white',
-            edgecolor='black',
+            facecolor='none',      # Transparent background
+            edgecolor='black',    # Keep border color
             boxstyle='round,pad=0.3',
             linewidth=1.0
         ),
