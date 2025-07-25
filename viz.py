@@ -173,11 +173,13 @@ def plot_uavFLPO_with_routes(
     F_locs, 
     final_cost,
     runtime,
-    routes, 
-    fraction_to_plot=0.3, 
+    routes,
+    cmap_name = "tab20",
+    fraction_to_plot=0.3,
     textcoords=[0.3, 0.95],
     textsize=18,
-    random_seed=None
+    random_seed=None,
+    save_path=None
 ):
     """
     Plot a subset of UAV routes, color-coded by destination, with a clean visual design.
@@ -198,7 +200,7 @@ def plot_uavFLPO_with_routes(
 
     # Assign color by unique destination
     unique_dests, dest_indices = np.unique(end_locs_np, axis=0, return_inverse=True)
-    dest_cmap = cm.get_cmap('tab10', len(unique_dests))
+    dest_cmap = cm.get_cmap(cmap_name, len(unique_dests))
 
     plt.figure(figsize=(12, 8))
 
@@ -216,7 +218,8 @@ def plot_uavFLPO_with_routes(
         end = end_locs_np[i]
         route_coords = fac_locs[routes[i]] if routes[i] else np.empty((0, 2))
         full_path = np.vstack([start, route_coords, end])
-        plt.plot(full_path[:, 0], full_path[:, 1], '-o', color=color)
+        plt.plot(full_path[1:, 0], full_path[1:, 1], '-o', color=color)
+        plt.plot(full_path[0:2, 0], full_path[0:2, 1], '-', color=color)
 
     # Plot all facility locations
     plt.scatter(fac_locs[:, 0], fac_locs[:, 1], c='gray', marker='.', s=50, alpha=0.4)
@@ -230,33 +233,34 @@ def plot_uavFLPO_with_routes(
     ]
     # plt.legend(handles=legend_elements, fontsize=24, ncol=4, loc='bottom center')
 
-    # # add text for M, N, n_ends and final cost
-    xcords, ycords = textcoords
-    # plt.text(
-    #     xcords,
-    #     ycords,
-    #     f"N={num_uavs}, M={num_facs},\nD={final_cost:.2e}, T={runtime:.2e} s",
-    #     fontsize=textsize,
-    #     color='black')
-
     # Add styled text with box
+    if textcoords == "top":
+        # Top center: x=0.5, y=0.98 in axes fraction coordinates
+        xcords, ycords = 0.5, 0.98
+        ha = 'center'
+        va = 'top'
+    else:
+        xcords, ycords = textcoords
+        ha = 'left'
+        va = 'top'
+
     plt.text(
         xcords,
         ycords,
-        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.2f}$, $T={runtime:.2f}$ s",
+        f"$N={num_uavs}$, $M={num_facs}$, $D={final_cost:.3f}$, $T={int(runtime)}$ s",
         fontsize=textsize,
         color='black',
-        fontname='Times New Roman', # 'DejaVu Serif',  Or 'Times New Roman'
+        fontname='Times New Roman',
         bbox=dict(
             facecolor='white',
             edgecolor='black',
             boxstyle='round,pad=0.3',
             linewidth=1.0
         ),
-        ha='left',  # horizontal alignment
-        va='top'    # vertical alignment
+        ha=ha,
+        va=va,
+        transform=plt.gca().transAxes
     )
-
 
     # Clean plot: remove ticks and labels, keep frame
     plt.xticks([])
@@ -267,6 +271,9 @@ def plot_uavFLPO_with_routes(
 
     plt.box(True)
     plt.tight_layout()
+    if save_path is not None:
+        plt.savefig(save_path, bbox_inches='tight', dpi=600)
+
     plt.show()
 
 
