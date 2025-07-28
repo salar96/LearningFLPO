@@ -77,13 +77,14 @@ def ga(
         sorted_idx = np.argsort(fitness)
         population = [population[i] for i in sorted_idx]
 
+        # tournament size
         elites = population[:5]  # keep top 5
 
         # Crossover (uniform)
         new_population = elites.copy()
         while len(new_population) < pop_size:
             p1, p2 = random.sample(elites, 2)
-            mask = np.random.rand(len(p1)) < 0.5
+            mask = np.random.rand(len(p1)) < 0.5 # crossover
             child = np.where(mask, p1, p2)
 
             # Mutation

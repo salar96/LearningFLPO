@@ -215,6 +215,7 @@ def sampling_GD_at_beta(
             n_path_samples, 
             returnGrad=True)
         D_samples_reshaped = D_samples.squeeze(-1).transpose(0,1)
+
         # compute a gibbs distribution on all the paths (shortest and sampled)
         D_cat = torch.cat((D_mins, D_samples.squeeze(-1).transpose(0,1)),axis=1)
         D_min = torch.min(D_cat, axis=1, keepdims=True).values
@@ -226,10 +227,10 @@ def sampling_GD_at_beta(
 
         # compute net gradient using samples
         GD_mins_reshaped = GD_mins.reshape(1,num_drones,num_facilities,dim_)
-        Grads = torch.cat((GD_mins.reshape(1,num_drones,num_facilities,dim_), GD_samples), axis=0) # n_samples x n_drones x n_facilities x dim_
-        reshape_gibbs = gibbs.T.reshape(n_path_samples+1, num_drones, 1, 1) # n_samples x n_drones x 1 x 1
+        Grads = torch.cat((GD_mins_reshaped, GD_samples), axis=0) # n_samples+1 x n_drones x n_facilities x dim_
+        reshape_gibbs = gibbs.T.reshape(D_cat.shape[1], num_drones, 1, 1) # n_samples x n_drones x 1 x 1
         G = torch.mean(torch.sum(reshape_gibbs * Grads, axis=0),axis=0, keepdims=True) # resulting shape: n_drones x n_facilities x dim_
-
+        
         # stopping criteria
         Norm_G = torch.norm(G).item()
         if Norm_G < tol:
@@ -295,13 +296,13 @@ def sampling_GD_at_beta_auto_diff(
         sumD_exp = torch.sum(D_exp, axis=1, keepdims=True)
         gibbs = D_exp/sumD_exp
         freeEnergy = torch.mean(-1/beta * torch.log(sumD_exp) + D_min)
-
         torch.cuda.empty_cache()
 
         # compute gradient of free energy wrt F_base using backpropagation
         optimizer.zero_grad()
         freeEnergy.backward()
         G = F_base.grad
+
         # optimizer step 
         optimizer.step()
 
@@ -310,7 +311,7 @@ def sampling_GD_at_beta_auto_diff(
             tol_Y = torch.norm(F_base-F_prev).item()
         if Norm_G < tol:
             if allowPrint:
-                print(f'Optimization terminated due to tol at iteration: {i} FreeE: {freeEnergy:.4e}')
+                print(f'Optimization terminated due to tol at iteration: {i} tol: {Norm_G} FreeE: {freeEnergy:.4e}')
             break
 
         # print data

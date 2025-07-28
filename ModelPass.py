@@ -12,7 +12,7 @@ def SPN_pass(spn, F_base, S, E, method="Greedy", returnGrad=False):
     s = time.time()
     torch.cuda.empty_cache()
     with torch.no_grad():
-        if num_facilities < 50 and num_drones < 50:
+        if num_facilities < 0 and num_drones < 0:
             _, actions = utils.generate_true_labels(data, 1e8)
             
             actions = torch.tensor(actions).unsqueeze(-1)
@@ -22,7 +22,6 @@ def SPN_pass(spn, F_base, S, E, method="Greedy", returnGrad=False):
         # print("time elapsed: " , e)
 
     if method == "BeamSearch":
-        
         costs = [utils.route_cost(data, actions[:, i, :]).unsqueeze(1) for i in range(actions.shape[1])]
         D_min_drones = torch.cat(costs,dim=1)
     else:
