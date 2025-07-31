@@ -149,11 +149,11 @@ def ga_print(s, e, best_y, best_eta, best_cost, elapsed_time):
 
 def ga_plot(s, e, best_y, best_eta):
     import matplotlib.pyplot as plt
-    map_img = imread("map.jpg")
-    img_extent = [-0.1, 1.1, -0.1, 1.1]
-    plt.figure(figsize=(6, 6))
+    # map_img = imread("map.jpg")
+    # img_extent = [-0.1, 1.1, -0.1, 1.1]
+    # plt.figure(figsize=(6, 6))
 
-    plt.imshow(map_img, extent=img_extent, origin='lower', alpha=0.5)
+    # plt.imshow(map_img, extent=img_extent, origin='lower', alpha=0.5)
     num_agents = best_eta.shape[0]
     T = best_eta.shape[1]
     num_nodes = best_y.shape[0]
@@ -231,12 +231,13 @@ def ga_plot(s, e, best_y, best_eta):
 if __name__ == "__main__":
     # Define s and e as numpy arrays of shape (num_agents, 1, dim)
     np.random.seed(150)  # For reproducibility
-    s = np.array([[[0.0, 0.0]], [[1.0, 0.0]]])
-    e = np.array([[[1.0, 1.0]], [[0.0, 1.0]]])
+    
     num_nodes = 4
-    num_agents = 2
+    num_agents = 20
     dim = 2
-   
+    s = np.random.rand(num_agents, 1, dim)  # Example start positions
+    e = np.random.rand(num_agents, 1, dim)  # Example end
+
     # Y_init = np.array([[[0.2, 0.2], [0.5, 0.5], [0.8, 0.8]]])
     best_y, best_eta, best_cost, elapsed_time = ga(
         s,

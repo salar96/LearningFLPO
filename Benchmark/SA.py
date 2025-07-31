@@ -154,37 +154,18 @@ def plot_sa(s, e, best_y, best_eta):
 
 
 if __name__ == "__main__":
-    num_agents = 2
-    num_nodes = 3
+    num_agents = 20
+    num_nodes = 4
     dim = 2
-    s = np.array(
-        [
-            [[0.0, 0.0]],
-            [[1.0, 0.0]],
-        ]
-    )
-    e = np.array(
-        [
-            [[1.0, 1.0]],
-            [[0.0, 1.0]],
-        ]
-    )
-    Y_init = np.array(
-        [
-            [
-                [0.3, 0.3],
-                [0.7, 0.2],
-                [0.5, 0.8],
-            ]
-        ]
-    )
+    s = np.random.rand(num_agents, 1, dim)  # Example start positions
+    e = np.random.rand(num_agents, 1, dim)  # Example end positions
     best_y, best_eta, best_cost, elapsed_time = sa(
         s,
         e,
         num_nodes,
         num_agents,
         dim,
-        Y_init=Y_init,
+        Y_init=None,
         YMIN=0,
         YMAX=1.0,
         iters=1000,
