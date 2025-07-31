@@ -149,11 +149,11 @@ def ga_print(s, e, best_y, best_eta, best_cost, elapsed_time):
 
 def ga_plot(s, e, best_y, best_eta):
     import matplotlib.pyplot as plt
-    # map_img = imread("map.jpg")
-    # img_extent = [-0.1, 1.1, -0.1, 1.1]
-    # plt.figure(figsize=(6, 6))
+    map_img = imread("Benchmark/map.jpg")
+    img_extent = [-0.1, 1.1, -0.1, 1.1]
+    plt.figure(figsize=(6, 6))
 
-    # plt.imshow(map_img, extent=img_extent, origin='lower', alpha=0.5)
+    plt.imshow(map_img, extent=img_extent, origin='lower', alpha=0.4)
     num_agents = best_eta.shape[0]
     T = best_eta.shape[1]
     num_nodes = best_y.shape[0]
@@ -161,9 +161,9 @@ def ga_plot(s, e, best_y, best_eta):
     colors = ["#5B33F9", "#DE4141", "g", "m", "c", "y", "k"]
     
     # Plot nodes
-    plt.scatter(best_y[:, 0], best_y[:, 1], c="k", marker="^", s=100, label="Nodes")
+    plt.scatter(best_y[:, 0], best_y[:, 1], c="k", marker="^", s=200, label="Nodes",zorder = 5)
     for i, pos in enumerate(best_y):
-        plt.text(pos[0]+0.01, pos[1]+0.01, f"$Y_{i+1}$", fontsize=14, color="k")
+        plt.text(pos[0]+0.01, pos[1]+0.01, f"$Y_{i+1}$", fontsize=30, color="k")
     # Plot start/end
     for a in range(s.shape[0]):
         start_coord = s[a, 0]
@@ -173,15 +173,15 @@ def ga_plot(s, e, best_y, best_eta):
             start_coord[1],
             c=colors[a % len(colors)],
             marker="s",
-            s=100,
+            s=200,
             label=f"Start {a}",
             
         )
         plt.text(
-            start_coord[0] + 0.01,
-            start_coord[1] + 0.01,
+            start_coord[0]-0.02,
+            start_coord[1] +0.05,
             f"$S_{a+1}$",
-            fontsize=14,
+            fontsize=30,
             color=colors[a % len(colors)],
         )
         plt.scatter(
@@ -189,15 +189,16 @@ def ga_plot(s, e, best_y, best_eta):
             end_coord[1],
             c=colors[a % len(colors)],
             marker="*",
-            s=100,
+            s=200,
             label=f"End {a}",
         )
         plt.text(
-            end_coord[0] + 0.01,
-            end_coord[1] + 0.01,
+            end_coord[0]-0.04,
+            end_coord[1]-0.1,
             f"$\Delta_{a+1}$",
-            fontsize=14,
+            fontsize=30,
             color=colors[a % len(colors)],
+            zorder=5
         )
     # Plot agent paths
     for a in range(num_agents):
@@ -216,6 +217,7 @@ def ga_plot(s, e, best_y, best_eta):
             c=colors[a % len(colors)],
             label=f"Agent {a} path",
             alpha=0.5,
+            linewidth=3,
         )
     # plt.legend()
     plt.xlabel("X")
@@ -224,7 +226,7 @@ def ga_plot(s, e, best_y, best_eta):
     # plt.grid(True)
     plt.axis('off')
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    # plt.savefig(f"ga_solution_paths_{timestamp}.png", bbox_inches='tight', dpi=600)
+    plt.savefig(f"ga_solution_paths_{timestamp}.png", bbox_inches='tight', dpi=300)
     plt.show()
 
 
@@ -233,10 +235,10 @@ if __name__ == "__main__":
     np.random.seed(150)  # For reproducibility
     
     num_nodes = 4
-    num_agents = 20
+    num_agents = 2
     dim = 2
-    s = np.random.rand(num_agents, 1, dim)  # Example start positions
-    e = np.random.rand(num_agents, 1, dim)  # Example end
+    s = np.array([[[0.0, 0.0]], [[1.0, 0.0]]])  # Start positions for agents
+    e = np.array([[[1.0, 1.0]], [[0.0, 1.0]]])  # End positions for agents
 
     # Y_init = np.array([[[0.2, 0.2], [0.5, 0.5], [0.8, 0.8]]])
     best_y, best_eta, best_cost, elapsed_time = ga(
@@ -248,8 +250,8 @@ if __name__ == "__main__":
         Y_init=None,
         verbose=True,
         pop_size=100,
-        generations=100,
-        mutation_rate=0.3,
+        generations=200,
+        mutation_rate=0.1,
     )
     ga_print(s, e, best_y, best_eta, best_cost, elapsed_time)
     ga_plot(s, e, best_y, best_eta)
